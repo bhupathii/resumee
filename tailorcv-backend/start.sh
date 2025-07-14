@@ -1,4 +1,6 @@
 #!/bin/bash
+# Redirect all output (stdout and stderr) to the console
+exec > >(tee /dev/tty) 2>&1
 
 # =================================================================
 # Production Startup Script for TailorCV Backend
@@ -7,7 +9,7 @@
 # It logs debugging information and then starts the Gunicorn server.
 
 # --- 1. Log Debugging Information ---
-echo "--- 🚀 Launching TailorCV Backend ---"
+echo "--- 🚀 Launching TailorCV Backend (v2) ---"
 echo "Date: $(date)"
 echo "User: $(whoami)"
 echo "Current Directory: $(pwd)"
