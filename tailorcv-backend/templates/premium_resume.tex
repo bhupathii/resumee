@@ -59,7 +59,7 @@
 % Enhanced Header with better styling
 \begin{center}
     % Name with professional styling
-    {\Huge \bfseries \color{primary} {{ personal_info.name }}} \\
+    {\Huge \bfseries \color{primary} (( personal_info.name ))} \\
     \vspace{5pt}
     
     % Decorative line
@@ -69,22 +69,22 @@
     % Contact information
     \small 
     {% if personal_info.phone %}
-        Phone: {{ personal_info.phone }}
+        Phone: (( personal_info.phone ))
     {% endif %}
     {% if personal_info.email %}
-        {% if personal_info.phone %} | {% endif %}Email: \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
+        {% if personal_info.phone %} | {% endif %}Email: \href{mailto:(( personal_info.email ))}{(( personal_info.email ))}
     {% endif %}
     {% if personal_info.location %}
-        | Location: {{ personal_info.location }}
+        | Location: (( personal_info.location ))
     {% endif %}
     {% if personal_info.linkedin %}
-        | LinkedIn: \href{{{ personal_info.linkedin }}}{LinkedIn Profile}
+        | LinkedIn: \href{(( personal_info.linkedin ))}{LinkedIn Profile}
     {% endif %}
     {% if personal_info.github %}
-        | GitHub: \href{{{ personal_info.github }}}{GitHub Profile}
+        | GitHub: \href{(( personal_info.github ))}{GitHub Profile}
     {% endif %}
     {% if personal_info.website %}
-        | Portfolio: \href{{{ personal_info.website }}}{Website}
+        | Portfolio: \href{(( personal_info.website ))}{Website}
     {% endif %}
 \end{center}
 
@@ -92,7 +92,7 @@
 {% if summary %}
 \section{Professional Summary}
 \begin{quote}
-    \textit{{{ summary }}}
+    \textit{(( summary ))}
 \end{quote}
 {% endif %}
 
@@ -101,7 +101,7 @@
 \section{Core Competencies}
 \resumeItemListStart
     {% for skill in skills %}
-    \resumeItem{{{ skill }}}
+    \resumeItem{(( skill ))}
     {% endfor %}
 \resumeItemListEnd
 {% endif %}
@@ -112,11 +112,11 @@
 \resumeSubHeadingListStart
     {% for exp in experience %}
     \resumeSubHeading
-        {{{ exp.title }}}{{{ exp.startDate }} -- {{ exp.endDate }}}
-        {{{ exp.company }}}{{% if exp.location %}{{ exp.location }}{% endif %}}
+        {(( exp.title ))}{(( exp.startDate ))} -- {(( exp.endDate ))}
+        {(( exp.company ))}{% if exp.location %}{(( exp.location ))}{% endif %}
         \resumeItemListStart
             {% for desc in exp.description %}
-            \resumeItem{{{ desc }}}
+            \resumeItem{(( desc ))}
             {% endfor %}
         \resumeItemListEnd
     {% endfor %}
@@ -129,15 +129,15 @@
 \resumeSubHeadingListStart
     {% for edu in education %}
     \resumeSubHeading
-        {{{ edu.degree }}}{{{ edu.startDate }} -- {{ edu.endDate }}}
-        {{{ edu.institution }}}{{% if edu.location %}{{ edu.location }}{% endif %}}
+        {(( edu.degree ))}{(( edu.startDate ))} -- {(( edu.endDate ))}
+        {(( edu.institution ))}{% if edu.location %}{(( edu.location ))}{% endif %}
         {% if edu.gpa or edu.relevantCourses %}
         \resumeItemListStart
             {% if edu.gpa %}
-            \resumeItem{GPA: {{ edu.gpa }}}
+            \resumeItem{GPA: (( edu.gpa ))}
             {% endif %}
             {% if edu.relevantCourses %}
-            \resumeItem{Relevant Coursework: {{ edu.relevantCourses | join(', ') }}}
+            \resumeItem{Relevant Coursework: (( edu.relevantCourses | join(', ') ))}
             {% endif %}
         \resumeItemListEnd
         {% endif %}
@@ -151,17 +151,17 @@
 \resumeSubHeadingListStart
     {% for project in projects %}
     \resumeProjectHeading
-        {\textbf{{{ project.name }}} 
+        {\textbf{(( project.name ))} 
         {% if project.link %} 
-        | \href{{{ project.link }}}{Live Demo}
+        | \href{(( project.link ))}{Live Demo}
         {% endif %}
         {% if project.github %}
-        | \href{{{ project.github }}}{Source Code}
+        | \href{(( project.github ))}{Source Code}
         {% endif %}
         }
-        {{% if project.technologies %}{{ project.technologies | join(' • ') }}{% endif %}}
+        {{% if project.technologies %}(( project.technologies | join(' • ') )){% endif %}}
         \resumeItemListStart
-            \resumeItem{{{ project.description }}}
+            \resumeItem{(( project.description ))}
         \resumeItemListEnd
     {% endfor %}
 \resumeSubHeadingListEnd
@@ -173,8 +173,8 @@
 \resumeSubHeadingListStart
     {% for cert in certifications %}
     \resumeProjectHeading
-        {\textbf{{{ cert.name }}}{% if cert.link %} - \href{{{ cert.link }}}{View Certificate}{% endif %}}
-        {{{ cert.issuer }} | {{ cert.date }}}
+        {\textbf{(( cert.name ))}{% if cert.link %} - \href{(( cert.link ))}{View Certificate}{% endif %}}
+        {(( cert.issuer ))} | {(( cert.date ))}}
     {% endfor %}
 \resumeSubHeadingListEnd
 {% endif %}
