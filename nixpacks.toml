@@ -3,7 +3,6 @@ nixPkgs = ["python39", "nodejs-18_x", "postgresql"]
 
 [phases.install]
 cmds = [
-    "cd tailorcv-backend",
     "pip install -r requirements.txt"
 ]
 
@@ -11,4 +10,4 @@ cmds = [
 cmds = ["echo 'Build completed'"]
 
 [start]
-cmd = "cd tailorcv-backend && python app.py"
+cmd = "python tailorcv-backend/app.py"
