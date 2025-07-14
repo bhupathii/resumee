@@ -26,7 +26,7 @@ from services.latex_service import LaTeXService
 from services.email_service import EmailService
 from services.auth_service import AuthService
 from utils.validators import validate_email, validate_file
-from utils.rate_limiter import RateLimiter
+from utils.rate_limiter import standard_limiter, premium_limiter
 import uuid
 
 load_dotenv()
@@ -55,12 +55,6 @@ pdf_service = initialize_service('PDF', PDFService)
 latex_service = initialize_service('LaTeX', LaTeXService)
 email_service = initialize_service('Email', EmailService)
 auth_service = initialize_service('Auth', AuthService)
-rate_limiter = RateLimiter() # This one doesn't have external dependencies
-
-print("\n--- Service Initialization Status ---")
-for service, status in service_status.items():
-    print(f"- {service}: {status}")
-print("---------------------------------")
 
 
 def get_current_user():
@@ -225,7 +219,16 @@ def generate_resume():
             premium_status = auth_service.check_premium_status_authenticated(user['id'])
             is_premium = premium_status['is_premium']
         
-        if not rate_limiter.is_allowed(user['id'] if user else client_ip, is_premium):
+        # Use the appropriate rate limiter based on premium status
+        if is_premium:
+            limiter = premium_limiter
+        else:
+            limiter = standard_limiter
+            
+        # The key for the rate limiter is the user's ID if they are logged in, otherwise their IP.
+        limiter_key = user['id'] if user else client_ip
+
+        if not limiter.allow_request(limiter_key):
             return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
 
         data = request.form
