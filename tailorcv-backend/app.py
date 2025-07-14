@@ -1,9 +1,22 @@
+import os
+import sys
+from datetime import datetime
+
+# --- Startup Logging ---
+print("--- Starting TailorCV Backend ---")
+print(f"Python Version: {sys.version}")
+print(f"Working Directory: {os.getcwd()}")
+# Log key environment variables to check if they are being passed correctly
+print(f"PORT from env: {os.environ.get('PORT', 'Not Set')}")
+print(f"GOOGLE_CLIENT_ID from env: {'Present' if os.environ.get('GOOGLE_CLIENT_ID') else 'MISSING'}")
+print(f"SUPABASE_URL from env: {'Present' if os.environ.get('SUPABASE_URL') else 'MISSING'}")
+print("-----------------------------")
+
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-import os
 import tempfile
 import json
-from datetime import datetime
 from dotenv import load_dotenv
 from services.openrouter_service import OpenRouterService
 from services.supabase_service import SupabaseService
@@ -21,19 +34,41 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-openrouter_service = OpenRouterService()
-supabase_service = SupabaseService()
-linkedin_service = LinkedInService()
-pdf_service = PDFService()
-latex_service = LaTeXService()
-email_service = EmailService()
-auth_service = AuthService()
-rate_limiter = RateLimiter()
+# --- Graceful Service Initialization ---
+service_status = {}
+
+def initialize_service(service_name, service_class):
+    try:
+        service_instance = service_class()
+        service_status[service_name] = "✅ Loaded"
+        return service_instance
+    except Exception as e:
+        error_message = f"❌ Failed to load {service_name}: {e}"
+        print(error_message)
+        service_status[service_name] = error_message
+        return None
+
+openrouter_service = initialize_service('OpenRouter', OpenRouterService)
+supabase_service = initialize_service('Supabase', SupabaseService)
+linkedin_service = initialize_service('LinkedIn', LinkedInService)
+pdf_service = initialize_service('PDF', PDFService)
+latex_service = initialize_service('LaTeX', LaTeXService)
+email_service = initialize_service('Email', EmailService)
+auth_service = initialize_service('Auth', AuthService)
+rate_limiter = RateLimiter() # This one doesn't have external dependencies
+
+print("\n--- Service Initialization Status ---")
+for service, status in service_status.items():
+    print(f"- {service}: {status}")
+print("---------------------------------")
+
 
 def get_current_user():
     """
     Get current user from session token (if provided)
     """
+    if not auth_service:
+        return None
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         session_token = auth_header.split(' ')[1]
@@ -42,13 +77,25 @@ def get_current_user():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+    # The service is "healthy" if it can respond to requests.
+    # It's "fully_functional" only if core services are loaded.
+    core_services_loaded = supabase_service is not None and auth_service is not None
+    status_code = 200 if core_services_loaded else 503  # 503 Service Unavailable
+
+    return jsonify({
+        "status": "healthy" if core_services_loaded else "degraded",
+        "timestamp": datetime.now().isoformat(),
+        "services": service_status
+    }), status_code
 
 @app.route('/api/auth/google', methods=['POST'])
 def google_auth():
     """
     Authenticate user with Google OAuth token
     """
+    if not auth_service:
+        return jsonify({"error": "Authentication service is not available. Check the backend deployment logs."}), 503
+
     try:
         data = request.get_json()
         if not data:
@@ -94,6 +141,9 @@ def logout():
     """
     Log out current user
     """
+    if not auth_service:
+        return jsonify({"error": "Authentication service is not available."}), 503
+
     try:
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
@@ -104,7 +154,7 @@ def logout():
         if auth_service.logout_user(session_token):
             return jsonify({"success": True, "message": "Logged out successfully"})
         else:
-            return jsonify({"error": "Failed to logout"}), 500
+            return jsonify({"success": False, "message": "Logout failed"}), 500
             
     except Exception as e:
         return jsonify({"error": f"Logout failed: {str(e)}"}), 500
@@ -112,15 +162,25 @@ def logout():
 @app.route('/api/auth/me', methods=['GET'])
 def get_current_user_info():
     """
-    Get current user information
+    Get current user's profile and status
     """
+    if not auth_service:
+        return jsonify({"error": "Authentication service is not available."}), 503
+
     try:
-        user = get_current_user()
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Not authenticated or session token missing"}), 401
+            
+        session_token = auth_header.split(' ')[1]
+        user_data = auth_service.get_user_by_session(session_token)
         
-        if not user:
-            return jsonify({"error": "Not authenticated"}), 401
+        if not user_data:
+            return jsonify({"error": "Invalid session or session expired"}), 401
+            
+        user = user_data
         
-        # Get premium status
+        # Check premium status
         premium_status = auth_service.check_premium_status_authenticated(user['id'])
         
         return jsonify({
@@ -138,204 +198,157 @@ def get_current_user_info():
         })
         
     except Exception as e:
-        return jsonify({"error": f"Failed to get user info: {str(e)}"}), 500
+        print(f"Error fetching user info: {e}")
+        return jsonify({"error": "Failed to retrieve user information"}), 500
 
 @app.route('/api/generate-resume', methods=['POST'])
 def generate_resume():
+    """
+    Generates a resume from LinkedIn profile or uploaded resume
+    """
+    if not openrouter_service or not latex_service or not supabase_service:
+        return jsonify({"error": "One or more services required for resume generation are unavailable."}), 503
+
     try:
+        # Check rate limit
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+        user = get_current_user()
         
-        # Get current user (if authenticated)
-        current_user = get_current_user()
-        
-        # Check rate limiting (higher limits for authenticated users)
-        if current_user:
-            # Authenticated users get higher rate limits
-            premium_status = auth_service.check_premium_status_authenticated(current_user['id'])
+        is_premium = False
+        if user:
+            premium_status = auth_service.check_premium_status_authenticated(user['id'])
             is_premium = premium_status['is_premium']
-            # Use premium rate limiter if premium, otherwise standard authenticated rate
-            max_requests = 50 if is_premium else 10
-        else:
-            # Guest users
-            if not rate_limiter.allow_request(client_ip):
-                return jsonify({"error": "Too many requests. Please try again later."}), 429
-            is_premium = False
         
-        linkedin_url = request.form.get('linkedinUrl')
-        job_description = request.form.get('jobDescription')
-        email = request.form.get('email')
-        resume_file = request.files.get('resume')
-        
-        # Use authenticated user's email if available
-        if current_user and not email:
-            email = current_user['email']
-        
+        if not rate_limiter.is_allowed(user['id'] if user else client_ip, is_premium):
+            return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
+
+        data = request.form
+        job_description = data.get('job_description')
+        linkedin_profile_url = data.get('linkedin_url')
+        uploaded_resume = request.files.get('resume')
+        template_name = data.get('template', 'premium_resume')
+
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
         
-        resume_data = None
-        
-        if linkedin_url:
-            try:
-                resume_data = linkedin_service.extract_profile_data(linkedin_url)
-            except Exception as e:
-                return jsonify({"error": f"Failed to extract LinkedIn data: {str(e)}"}), 400
-        
-        elif resume_file:
-            if not validate_file(resume_file):
-                return jsonify({"error": "Invalid file format or size"}), 400
+        if not linkedin_profile_url and not uploaded_resume:
+            return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
+
+        if template_name not in ['free_resume', 'premium_resume']:
+            return jsonify({"error": "Invalid template name"}), 400
+
+        # Process input
+        if linkedin_profile_url:
+            print(f"Fetching LinkedIn profile: {linkedin_profile_url}")
+            profile_data = linkedin_service.get_profile(linkedin_profile_url)
+            if not profile_data:
+                return jsonify({"error": "Failed to fetch LinkedIn profile"}), 500
             
-            try:
-                resume_data = pdf_service.extract_text_from_pdf(resume_file)
-            except Exception as e:
-                return jsonify({"error": f"Failed to extract PDF data: {str(e)}"}), 400
+            # Use the full profile text for analysis
+            resume_text = json.dumps(profile_data)
+
+        elif uploaded_resume:
+            if not validate_file(uploaded_resume):
+                return jsonify({"error": "Invalid file type or size"}), 400
+
+            print(f"Processing uploaded resume: {uploaded_resume.filename}")
+            resume_text = pdf_service.extract_text(uploaded_resume.stream)
         
-        else:
-            return jsonify({"error": "Either LinkedIn URL or resume file is required"}), 400
-        
-        try:
-            optimized_resume = openrouter_service.optimize_resume(resume_data, job_description)
-        except Exception as e:
-            return jsonify({"error": f"Failed to optimize resume: {str(e)}"}), 500
-        
-        # Determine premium status
-        if current_user:
-            # For authenticated users, use their premium status
-            premium_status = auth_service.check_premium_status_authenticated(current_user['id'])
-            is_premium = premium_status['is_premium']
-        elif email:
-            # For guest users with email, check premium status
-            user_status = supabase_service.check_user_premium_status(email, client_ip)
-            is_premium = user_status.get('is_premium', False)
-        else:
-            is_premium = False
+        # Use OpenRouter to tailor the resume
+        print("Generating tailored content with OpenRouter...")
+        tailored_content_str = openrouter_service.generate_resume_content(resume_text, job_description)
         
         try:
-            pdf_buffer = latex_service.generate_pdf(optimized_resume, is_premium)
-        except Exception as e:
-            return jsonify({"error": f"Failed to generate PDF: {str(e)}"}), 500
+            tailored_content = json.loads(tailored_content_str)
+        except json.JSONDecodeError:
+            print("Failed to parse JSON from OpenRouter, using raw string.")
+            # Fallback for non-JSON content
+            tailored_content = {"summary": tailored_content_str, "experiences": [], "skills": ""}
+
+        # Generate LaTeX PDF
+        print(f"Generating PDF with template: {template_name}.tex")
+        pdf_bytes = latex_service.generate_pdf(template_name, tailored_content)
+
+        if not pdf_bytes:
+            return jsonify({"error": "Failed to generate PDF: LaTeX compilation failed"}), 500
+
+        # Save generation record to Supabase
+        if user:
+            auth_service.increment_generation_count(user['id'])
+            supabase_service.save_generation(user_id=user['id'], job_description=job_description)
+
+        # Return the generated PDF
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        temp_file.write(pdf_bytes)
+        temp_file.close()
         
-        temp_filename = f"resume_{uuid.uuid4().hex}.pdf"
-        temp_filepath = os.path.join(tempfile.gettempdir(), temp_filename)
-        
-        with open(temp_filepath, 'wb') as f:
-            f.write(pdf_buffer)
-        
-        try:
-            file_url = supabase_service.upload_resume(temp_filepath, temp_filename)
-        except Exception as e:
-            return jsonify({"error": f"Failed to upload resume: {str(e)}"}), 500
-        
-        # Log generation with user_id if authenticated
-        generation_data = {
-            'email': email,
-            'ip': client_ip,
-            'job_description_snippet': job_description[:100],
-            'resume_url': file_url,
-            'is_premium': is_premium
-        }
-        
-        if current_user:
-            generation_data['user_id'] = current_user['id']
-            # Increment generation count for authenticated users
-            auth_service.increment_generation_count(current_user['id'])
-        
-        supabase_service.client.table('generations').insert(generation_data).execute()
-        
-        if email:
-            try:
-                email_service.send_resume_email(email, file_url)
-            except Exception as e:
-                print(f"Failed to send email: {str(e)}")
-        
-        os.remove(temp_filepath)
-        
-        return jsonify({
-            "success": True,
-            "resumeUrl": file_url,
-            "isPremium": is_premium,
-            "message": "Resume generated successfully",
-            "user": {
-                "authenticated": current_user is not None,
-                "generation_count": premium_status.get('generation_count', 0) if current_user else None
-            }
-        })
-        
+        return send_file(temp_file.name, as_attachment=True, download_name='Tailored_Resume.pdf')
+
     except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        print(f"Error in generate_resume: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred during resume generation."}), 500
+
 
 @app.route('/api/payment/upload', methods=['POST'])
 def upload_payment_screenshot():
+    """
+    Handles payment screenshot uploads
+    """
+    if not supabase_service or not email_service:
+        return jsonify({"error": "Payment processing services are unavailable."}), 503
+
     try:
         email = request.form.get('email')
         screenshot = request.files.get('screenshot')
-        timestamp = request.form.get('timestamp')
+
+        if not email or not validate_email(email):
+            return jsonify({"error": "A valid email is required"}), 400
         
-        if not email or not screenshot:
-            return jsonify({"error": "Email and screenshot are required"}), 400
+        if not screenshot or not validate_file(screenshot, content_types=['image/jpeg', 'image/png']):
+            return jsonify({"error": "A valid screenshot (JPG/PNG) is required"}), 400
+
+        # Upload to Supabase Storage
+        file_path = f"payment_screenshots/{uuid.uuid4()}{os.path.splitext(screenshot.filename)[1]}"
+        supabase_service.upload_file(file_path, screenshot.stream.read(), screenshot.content_type)
         
-        if not validate_email(email):
-            return jsonify({"error": "Invalid email format"}), 400
-        
-        if not validate_file(screenshot, allowed_types=['image/png', 'image/jpeg', 'image/jpg']):
-            return jsonify({"error": "Invalid file format or size"}), 400
-        
-        screenshot_filename = f"payment_{uuid.uuid4().hex}_{screenshot.filename}"
-        screenshot_path = os.path.join(tempfile.gettempdir(), screenshot_filename)
-        screenshot.save(screenshot_path)
-        
-        try:
-            screenshot_url = supabase_service.upload_payment_screenshot(screenshot_path, screenshot_filename)
-        except Exception as e:
-            return jsonify({"error": f"Failed to upload screenshot: {str(e)}"}), 500
-        
-        payment_record = {
-            "email": email,
-            "screenshot_url": screenshot_url,
-            "timestamp": timestamp or datetime.now().isoformat(),
-            "status": "pending"
-        }
-        
-        try:
-            supabase_service.create_payment_record(payment_record)
-        except Exception as e:
-            return jsonify({"error": f"Failed to create payment record: {str(e)}"}), 500
-        
-        try:
-            email_service.send_payment_notification(email, screenshot_url)
-        except Exception as e:
-            print(f"Failed to send payment notification: {str(e)}")
-        
-        os.remove(screenshot_path)
-        
-        return jsonify({
-            "success": True,
-            "message": "Payment screenshot uploaded successfully. You'll receive confirmation within 24 hours."
-        })
-        
+        public_url = supabase_service.get_public_url(file_path)
+
+        # Save payment record
+        supabase_service.save_payment(email, public_url)
+
+        # Send notification email
+        email_service.send_payment_notification(email, public_url)
+
+        return jsonify({"success": True, "message": "Payment proof uploaded. We will review it shortly."})
+
     except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        print(f"Payment upload error: {str(e)}")
+        return jsonify({"error": "Failed to process payment upload."}), 500
+
 
 @app.route('/api/user/status', methods=['GET'])
 def get_user_status():
+    """
+    Get user status (premium, generation count)
+    """
+    if not auth_service:
+        return jsonify({"error": "Authentication service is not available."}), 503
+        
     try:
-        email = request.args.get('email')
-        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
-        
-        if not email:
-            return jsonify({"error": "Email is required"}), 400
-        
-        user_status = supabase_service.check_user_premium_status(email, client_ip)
+        user = get_current_user()
+        if not user:
+            return jsonify({"error": "Not authenticated"}), 401
+            
+        premium_status = auth_service.check_premium_status_authenticated(user['id'])
         
         return jsonify({
-            "success": True,
-            "isPremium": user_status.get('is_premium', False),
-            "generationCount": user_status.get('generation_count', 0),
-            "lastGenerated": user_status.get('last_generated')
+            "is_premium": premium_status['is_premium'],
+            "generation_count": premium_status['generation_count']
         })
         
     except Exception as e:
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({"error": "Failed to get user status"}), 500
+
 
 @app.errorhandler(404)
 def not_found(error):
