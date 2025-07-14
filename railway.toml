@@ -1,12 +1,18 @@
 [build]
-builder = "nixpacks"
+# We are using a Dockerfile, so we specify the 'dockerfile' builder.
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python app_minimal.py"
+# The command to start the application. This should match our script.
+startCommand = "/app/start.sh"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 180
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 3
+
+# Adding a delay gives the app time to initialize before the first healthcheck.
+healthcheckInitialDelay = 30
 
 [build.env]
 PYTHONUNBUFFERED = "1"
