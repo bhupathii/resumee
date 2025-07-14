@@ -9,12 +9,12 @@ class OpenRouterService:
         self.base_url = "https://openrouter.ai/api/v1"
         # Try multiple free models in order of preference
         self.models = [
+            "tngtech/deepseek-r1t2-chimera:free",
             "mistralai/mistral-7b-instruct:free",
-            "huggingface/microsoft/DialoGPT-medium:free", 
             "google/gemma-7b-it:free",
             "meta-llama/llama-3-8b-instruct:free"
         ]
-        self.model = self.models[0]  # Default to first available
+        self.model = self.models[0]  # Default to DeepSeek R1T2 Chimera
         
     def optimize_resume(self, resume_data: str, job_description: str) -> Dict[str, Any]:
         """
