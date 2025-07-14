@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "tailorcv",
   "builds": [
     {
       "src": "tailorcv-frontend/package.json",
