@@ -10,7 +10,7 @@ cmds = [
 cmds = ["echo 'Build completed'"]
 
 [start]
-cmd = "python tailorcv-backend/app_minimal.py"
+cmd = "python tailorcv-backend/app.py"
 
 [variables]
 PYTHONUNBUFFERED = "1"
