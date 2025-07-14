@@ -5,6 +5,8 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 
 \pagestyle{empty}
 \setlength{\tabcolsep}{0em}
@@ -16,7 +18,7 @@
 \definecolor{light}{RGB}{248, 250, 252}
 
 % Enhanced section formatting
-\titleformat{\section}{\vspace{-4pt}\scshape\raggedright\large\bfseries\color{primary}}{}{0em}{}[\color{accent}\titlerule \vspace{-5pt}]
+\titleformat{\section}{\vspace{-4pt}\raggedright\large\bfseries\color{primary}}{}{0em}{}[\color{accent}\titlerule \vspace{-5pt}]
 
 % Custom commands
 \newcommand{\resumeItem}[1]{\item\small{#1}}
@@ -56,7 +58,7 @@
 % Enhanced Header with better styling
 \begin{center}
     % Name with professional styling
-    {\Huge \scshape \color{primary} {{ personal_info.name }}} \\
+    {\Huge \bfseries \color{primary} {{ personal_info.name }}} \\
     \vspace{5pt}
     
     % Decorative line

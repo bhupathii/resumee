@@ -5,6 +5,8 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 
 % Add watermark for free version
 \usepackage{background}
@@ -19,7 +21,7 @@
 \definecolor{accent}{RGB}{16, 185, 129}
 
 % Section formatting
-\titleformat{\section}{\vspace{-4pt}\scshape\raggedright\large\bfseries\color{primary}}{}{0em}{}[\color{primary}\titlerule \vspace{-5pt}]
+\titleformat{\section}{\vspace{-4pt}\raggedright\large\bfseries\color{primary}}{}{0em}{}[\color{primary}\titlerule \vspace{-5pt}]
 
 % Custom commands
 \newcommand{\resumeItem}[1]{\item\small{#1}}
@@ -41,7 +43,7 @@
 
 % Header
 \begin{center}
-    {\Huge \scshape \color{primary} {{ personal_info.name }}} \\ \vspace{1pt}
+    {\Huge \bfseries \color{primary} {{ personal_info.name }}} \\ \vspace{1pt}
     \small 
     {% if personal_info.phone %}
         Phone: {{ personal_info.phone }}

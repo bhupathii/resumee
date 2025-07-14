@@ -198,17 +198,19 @@ class LaTeXService:
 \\usepackage{{enumitem}}
 \\usepackage{{hyperref}}
 \\usepackage{{xcolor}}
+\\usepackage[T1]{{fontenc}}
+\\usepackage{{lmodern}}
 {watermark}
 
 \\pagestyle{{empty}}
 \\setlength{{\\tabcolsep}}{{0em}}
 
-\\titleformat{{\\section}}{{\\vspace{{-4pt}}\\scshape\\raggedright\\large\\bfseries}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule \\vspace{{-5pt}}]
+\\titleformat{{\\section}}{{\\vspace{{-4pt}}\\raggedright\\large\\bfseries}}{{}}{{0em}}{{}}[\\color{{black}}\\titlerule \\vspace{{-5pt}}]
 
 \\begin{{document}}
 
 \\begin{{center}}
-    {{\\Huge \\scshape {name}}} \\\\ \\vspace{{1pt}}
+    {{\\Huge \\bfseries {name}}} \\\\ \\vspace{{1pt}}
     \\small Phone: {phone} | Email: \\href{{mailto:{email}}}{{{email}}} | Location: {location}
 \\end{{center}}
 
