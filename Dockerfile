@@ -1,27 +1,20 @@
-# TailorCV Backend Dockerfile - Minimal Version
+# TailorCV Backend Dockerfile - Ultra Minimal for Debugging
 FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for LaTeX and other tools
+# Install minimal system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
     curl \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-fonts-recommended \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+# Copy requirements and install only essential Python dependencies
 COPY tailorcv-backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir flask flask-cors python-dotenv
 
 # Copy backend code
 COPY tailorcv-backend ./
-
-# Create directory for temporary files
-RUN mkdir -p /tmp/tailorcv
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -31,9 +24,9 @@ ENV PORT=5000
 # Expose port
 EXPOSE 5000
 
-# Health check with longer timeout and more retries
-HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=5 \
+# Health check with very basic settings
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Use the minimal app that handles missing dependencies gracefully
-CMD ["python", "app_minimal.py"]
+# Use the ultra-minimal app for debugging
+CMD ["python", "app_ultra_minimal.py"]
