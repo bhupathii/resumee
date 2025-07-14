@@ -1,8 +1,0 @@
-# Ignore frontend directory for Railway deployment
-tailorcv-frontend/
-node_modules/
-*.log
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
