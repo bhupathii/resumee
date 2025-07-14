@@ -5,10 +5,14 @@ import Features from '../components/Features';
 import Testimonials from '../components/Testimonials';
 import Footer from '../components/Footer';
 
-const LandingPage: React.FC = () => {
+interface LandingPageProps {
+  user?: any;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ user }) => {
   return (
     <div className="min-h-screen">
-      <Hero />
+      <Hero user={user} />
       <HowItWorks />
       <Features />
       <Testimonials />

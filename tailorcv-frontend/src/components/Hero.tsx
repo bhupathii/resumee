@@ -3,7 +3,11 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Zap, Target, Clock } from 'lucide-react';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+  user?: any;
+}
+
+const Hero: React.FC<HeroProps> = ({ user }) => {
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">

@@ -5,8 +5,6 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
-\usepackage{fontawesome5}
-\usepackage{graphicx}
 
 % Add watermark for free version
 \usepackage{background}
@@ -33,6 +31,12 @@
     \end{tabular*}\vspace{-7pt}
 }
 
+% Define missing commands
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
 \begin{document}
 
 % Header
@@ -40,19 +44,19 @@
     {\Huge \scshape \color{primary} {{ personal_info.name }}} \\ \vspace{1pt}
     \small 
     {% if personal_info.phone %}
-        \faPhone\ {{ personal_info.phone }}
+        Phone: {{ personal_info.phone }}
     {% endif %}
     {% if personal_info.email %}
-        $|$ \faEnvelope\ \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
+        {% if personal_info.phone %} | {% endif %}Email: \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
     {% endif %}
     {% if personal_info.location %}
-        $|$ \faMapMarker\ {{ personal_info.location }}
+        | Location: {{ personal_info.location }}
     {% endif %}
     {% if personal_info.linkedin %}
-        $|$ \faLinkedin\ \href{{{ personal_info.linkedin }}}{LinkedIn}
+        | LinkedIn: \href{{{ personal_info.linkedin }}}{LinkedIn Profile}
     {% endif %}
     {% if personal_info.github %}
-        $|$ \faGithub\ \href{{{ personal_info.github }}}{GitHub}
+        | GitHub: \href{{{ personal_info.github }}}{GitHub Profile}
     {% endif %}
 \end{center}
 
@@ -65,68 +69,68 @@
 % Skills
 {% if skills %}
 \section{Technical Skills}
-\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]
+\resumeItemListStart
     {% for skill in skills %}
     \resumeItem{{{ skill }}}
     {% endfor %}
-\end{itemize}
+\resumeItemListEnd
 {% endif %}
 
 % Experience
 {% if experience %}
 \section{Professional Experience}
-\begin{itemize}[leftmargin=0.15in, label={}]
+\resumeSubHeadingListStart
     {% for exp in experience %}
     \resumeSubHeading
         {{{ exp.title }}}{{{ exp.startDate }} -- {{ exp.endDate }}}
-        {{{ exp.company }}}{{{ exp.location }}}
+        {{{ exp.company }}}{{% if exp.location %}{{ exp.location }}{% endif %}}
         \resumeItemListStart
             {% for desc in exp.description %}
             \resumeItem{{{ desc }}}
             {% endfor %}
         \resumeItemListEnd
     {% endfor %}
-\end{itemize}
+\resumeSubHeadingListEnd
 {% endif %}
 
 % Education
 {% if education %}
 \section{Education}
-\begin{itemize}[leftmargin=0.15in, label={}]
+\resumeSubHeadingListStart
     {% for edu in education %}
     \resumeSubHeading
         {{{ edu.degree }}}{{{ edu.startDate }} -- {{ edu.endDate }}}
-        {{{ edu.institution }}}{{{ edu.location }}}
+        {{{ edu.institution }}}{{% if edu.location %}{{ edu.location }}{% endif %}}
         {% if edu.gpa %}
         \resumeItemListStart
             \resumeItem{GPA: {{ edu.gpa }}}
         \resumeItemListEnd
         {% endif %}
     {% endfor %}
-\end{itemize}
+\resumeSubHeadingListEnd
 {% endif %}
 
 % Projects
 {% if projects %}
 \section{Projects}
-\begin{itemize}[leftmargin=0.15in, label={}]
+\resumeSubHeadingListStart
     {% for project in projects %}
     \resumeSubHeading
-        {{{ project.name }}}{% if project.link %} \href{{{ project.link }}}{\faExternalLink}{% endif %}
+        {{{ project.name }}}{% if project.link %} - \href{{{ project.link }}}{View Project}{% endif %}
         {{% if project.technologies %}{{ project.technologies | join(', ') }}{% endif %}}
         {{{ project.description }}}{}
     {% endfor %}
-\end{itemize}
+\resumeSubHeadingListEnd
 {% endif %}
 
 % Certifications
 {% if certifications %}
 \section{Certifications}
-\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]
+\resumeItemListStart
     {% for cert in certifications %}
     \resumeItem{\textbf{{{ cert.name }}} - {{ cert.issuer }} ({{ cert.date }})}
     {% endfor %}
-\end{itemize}
+\resumeItemListEnd
 {% endif %}
 
 % Footer with TailorCV branding

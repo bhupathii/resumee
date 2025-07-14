@@ -5,9 +5,6 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{xcolor}
-\usepackage{fontawesome5}
-\usepackage{graphicx}
-\usepackage{tikz}
 
 \pagestyle{empty}
 \setlength{\tabcolsep}{0em}
@@ -51,40 +48,40 @@
 
 \newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
-\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]}
 \newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
 
 \begin{document}
 
 % Enhanced Header with better styling
 \begin{center}
-    % Name with underline
+    % Name with professional styling
     {\Huge \scshape \color{primary} {{ personal_info.name }}} \\
     \vspace{5pt}
     
-    % Contact information with icons
-    \begin{tikzpicture}[remember picture,overlay]
-        \draw[color=accent,line width=1pt] ([yshift=-2pt]current page.north west) -- ([yshift=-2pt]current page.north east);
-    \end{tikzpicture}
+    % Decorative line
+    \textcolor{accent}{\rule{0.8\textwidth}{1pt}}
+    \vspace{5pt}
     
+    % Contact information
     \small 
     {% if personal_info.phone %}
-        \faPhone\ {{ personal_info.phone }}
+        Phone: {{ personal_info.phone }}
     {% endif %}
     {% if personal_info.email %}
-        {% if personal_info.phone %}$|${% endif %} \faEnvelope\ \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
+        {% if personal_info.phone %} | {% endif %}Email: \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
     {% endif %}
     {% if personal_info.location %}
-        $|$ \faMapMarker\ {{ personal_info.location }}
+        | Location: {{ personal_info.location }}
     {% endif %}
     {% if personal_info.linkedin %}
-        $|$ \faLinkedin\ \href{{{ personal_info.linkedin }}}{LinkedIn}
+        | LinkedIn: \href{{{ personal_info.linkedin }}}{LinkedIn Profile}
     {% endif %}
     {% if personal_info.github %}
-        $|$ \faGithub\ \href{{{ personal_info.github }}}{GitHub}
+        | GitHub: \href{{{ personal_info.github }}}{GitHub Profile}
     {% endif %}
     {% if personal_info.website %}
-        $|$ \faGlobe\ \href{{{ personal_info.website }}}{Portfolio}
+        | Portfolio: \href{{{ personal_info.website }}}{Website}
     {% endif %}
 \end{center}
 
@@ -99,11 +96,11 @@
 % Core Competencies (Enhanced Skills Section)
 {% if skills %}
 \section{Core Competencies}
-\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]
+\resumeItemListStart
     {% for skill in skills %}
     \resumeItem{{{ skill }}}
     {% endfor %}
-\end{itemize}
+\resumeItemListEnd
 {% endif %}
 
 % Professional Experience
@@ -113,7 +110,7 @@
     {% for exp in experience %}
     \resumeSubHeading
         {{{ exp.title }}}{{{ exp.startDate }} -- {{ exp.endDate }}}
-        {{{ exp.company }}}{{{ exp.location }}}
+        {{{ exp.company }}}{{% if exp.location %}{{ exp.location }}{% endif %}}
         \resumeItemListStart
             {% for desc in exp.description %}
             \resumeItem{{{ desc }}}
@@ -130,7 +127,7 @@
     {% for edu in education %}
     \resumeSubHeading
         {{{ edu.degree }}}{{{ edu.startDate }} -- {{ edu.endDate }}}
-        {{{ edu.institution }}}{{{ edu.location }}}
+        {{{ edu.institution }}}{{% if edu.location %}{{ edu.location }}{% endif %}}
         {% if edu.gpa or edu.relevantCourses %}
         \resumeItemListStart
             {% if edu.gpa %}
@@ -153,10 +150,10 @@
     \resumeProjectHeading
         {\textbf{{{ project.name }}} 
         {% if project.link %} 
-        $|$ \href{{{ project.link }}}{\faExternalLink\ Live Demo}
+        | \href{{{ project.link }}}{Live Demo}
         {% endif %}
         {% if project.github %}
-        $|$ \href{{{ project.github }}}{\faGithub\ Code}
+        | \href{{{ project.github }}}{Source Code}
         {% endif %}
         }
         {{% if project.technologies %}{{ project.technologies | join(' • ') }}{% endif %}}
@@ -173,8 +170,8 @@
 \resumeSubHeadingListStart
     {% for cert in certifications %}
     \resumeProjectHeading
-        {\textbf{{{ cert.name }}}{% if cert.link %} \href{{{ cert.link }}}{\faExternalLink}{% endif %}}
-        {{{ cert.issuer }} $|$ {{ cert.date }}}
+        {\textbf{{{ cert.name }}}{% if cert.link %} - \href{{{ cert.link }}}{View Certificate}{% endif %}}
+        {{{ cert.issuer }} | {{ cert.date }}}
     {% endfor %}
 \resumeSubHeadingListEnd
 {% endif %}

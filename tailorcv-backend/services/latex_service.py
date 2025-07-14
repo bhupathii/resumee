@@ -3,11 +3,43 @@ import tempfile
 import subprocess
 from typing import Dict, Any
 from jinja2 import Environment, FileSystemLoader
+import re
+import logging
 
 class LaTeXService:
     def __init__(self):
         self.template_dir = os.path.join(os.path.dirname(__file__), '..', 'templates')
         self.jinja_env = Environment(loader=FileSystemLoader(self.template_dir))
+        
+        # Configure Jinja2 filters for LaTeX escaping
+        self.jinja_env.filters['latex_escape'] = self._latex_escape
+    
+    def _latex_escape(self, text):
+        """
+        Escape special LaTeX characters in text
+        """
+        if not isinstance(text, str):
+            text = str(text)
+        
+        # LaTeX special characters that need escaping
+        latex_chars = {
+            '&': r'\&',
+            '%': r'\%',
+            '$': r'\$',
+            '#': r'\#',
+            '^': r'\^{}',
+            '_': r'\_',
+            '{': r'\{',
+            '}': r'\}',
+            '~': r'\~{}',
+            '\\': r'\textbackslash{}',
+        }
+        
+        # Replace special characters
+        for char, replacement in latex_chars.items():
+            text = text.replace(char, replacement)
+        
+        return text
     
     def generate_pdf(self, resume_data: Dict[str, Any], is_premium: bool = False) -> bytes:
         """
@@ -26,6 +58,7 @@ class LaTeXService:
             return pdf_content
             
         except Exception as e:
+            logging.error(f"PDF generation failed: {str(e)}")
             raise Exception(f"Failed to generate PDF: {str(e)}")
     
     def _generate_latex_content(self, resume_data: Dict[str, Any], template_name: str, is_premium: bool) -> str:
@@ -36,18 +69,8 @@ class LaTeXService:
             # Load template
             template = self.jinja_env.get_template(template_name)
             
-            # Prepare data for template
-            template_data = {
-                'personal_info': resume_data.get('personalInfo', {}),
-                'summary': resume_data.get('summary', ''),
-                'skills': resume_data.get('skills', []),
-                'experience': resume_data.get('experience', []),
-                'education': resume_data.get('education', []),
-                'projects': resume_data.get('projects', []),
-                'certifications': resume_data.get('certifications', []),
-                'is_premium': is_premium,
-                'show_watermark': not is_premium
-            }
+            # Clean and prepare data for template
+            template_data = self._prepare_template_data(resume_data, is_premium)
             
             # Render template
             latex_content = template.render(template_data)
@@ -55,8 +78,45 @@ class LaTeXService:
             return latex_content
             
         except Exception as e:
+            logging.error(f"Template rendering failed: {str(e)}")
             # Fallback to basic template if template rendering fails
             return self._generate_fallback_latex(resume_data, is_premium)
+    
+    def _prepare_template_data(self, resume_data: Dict[str, Any], is_premium: bool) -> Dict[str, Any]:
+        """
+        Prepare and clean resume data for LaTeX template
+        """
+        # Escape LaTeX special characters in all text fields
+        def clean_text(text):
+            if isinstance(text, str):
+                return self._latex_escape(text)
+            return text
+        
+        def clean_dict(data):
+            if isinstance(data, dict):
+                return {k: clean_dict(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [clean_dict(item) for item in data]
+            else:
+                return clean_text(data)
+        
+        # Clean all data
+        cleaned_data = clean_dict(resume_data)
+        
+        # Prepare data for template
+        template_data = {
+            'personal_info': cleaned_data.get('personalInfo', {}),
+            'summary': cleaned_data.get('summary', ''),
+            'skills': cleaned_data.get('skills', []),
+            'experience': cleaned_data.get('experience', []),
+            'education': cleaned_data.get('education', []),
+            'projects': cleaned_data.get('projects', []),
+            'certifications': cleaned_data.get('certifications', []),
+            'is_premium': is_premium,
+            'show_watermark': not is_premium
+        }
+        
+        return template_data
     
     def _compile_latex_to_pdf(self, latex_content: str) -> bytes:
         """
@@ -69,48 +129,65 @@ class LaTeXService:
                 f.write(latex_content)
             
             try:
-                # Run pdflatex
+                # First attempt with pdflatex
                 result = subprocess.run([
                     'pdflatex',
                     '-interaction=nonstopmode',
                     '-output-directory=' + temp_dir,
+                    '-halt-on-error',
                     tex_file
                 ], capture_output=True, text=True, timeout=60)
                 
                 if result.returncode != 0:
+                    logging.warning(f"pdflatex failed, trying xelatex. Error: {result.stderr}")
                     # If pdflatex fails, try with xelatex
                     result = subprocess.run([
                         'xelatex',
                         '-interaction=nonstopmode',
                         '-output-directory=' + temp_dir,
+                        '-halt-on-error',
                         tex_file
                     ], capture_output=True, text=True, timeout=60)
                 
                 if result.returncode != 0:
-                    raise Exception(f"LaTeX compilation failed: {result.stderr}")
+                    # Log the LaTeX error for debugging
+                    error_msg = f"LaTeX compilation failed.\nStdout: {result.stdout}\nStderr: {result.stderr}"
+                    logging.error(error_msg)
+                    
+                    # Try to extract useful error information
+                    error_lines = result.stdout.split('\n') + result.stderr.split('\n')
+                    useful_errors = []
+                    for line in error_lines:
+                        if any(keyword in line.lower() for keyword in ['error', 'undefined', 'missing', 'not found']):
+                            useful_errors.append(line.strip())
+                    
+                    if useful_errors:
+                        raise Exception(f"LaTeX compilation error: {'; '.join(useful_errors[:3])}")
+                    else:
+                        raise Exception(f"LaTeX compilation failed with return code {result.returncode}")
                 
                 # Read generated PDF
                 pdf_file = os.path.join(temp_dir, 'resume.pdf')
                 if not os.path.exists(pdf_file):
-                    raise Exception("PDF file was not generated")
+                    raise Exception("PDF file was not generated despite successful compilation")
                 
                 with open(pdf_file, 'rb') as f:
                     return f.read()
                     
             except subprocess.TimeoutExpired:
-                raise Exception("LaTeX compilation timed out")
+                raise Exception("LaTeX compilation timed out after 60 seconds")
             except FileNotFoundError:
-                raise Exception("LaTeX compiler not found. Please install pdflatex or xelatex.")
+                raise Exception("LaTeX compiler not found. Please ensure pdflatex or xelatex is installed.")
     
     def _generate_fallback_latex(self, resume_data: Dict[str, Any], is_premium: bool) -> str:
         """
-        Generate basic LaTeX content as fallback
+        Generate basic LaTeX content as fallback when template fails
         """
         personal_info = resume_data.get('personalInfo', {})
-        name = personal_info.get('name', 'Your Name')
-        email = personal_info.get('email', 'your.email@example.com')
-        phone = personal_info.get('phone', '(555) 123-4567')
-        location = personal_info.get('location', 'Your City, State')
+        name = self._latex_escape(personal_info.get('name', 'Your Name'))
+        email = self._latex_escape(personal_info.get('email', 'your.email@example.com'))
+        phone = self._latex_escape(personal_info.get('phone', '(555) 123-4567'))
+        location = self._latex_escape(personal_info.get('location', 'Your City, State'))
         
         watermark = '' if is_premium else '\\usepackage{background}\n\\backgroundsetup{scale=1,color=black,opacity=0.1,angle=45,contents={Generated by TailorCV}}'
         
@@ -132,11 +209,11 @@ class LaTeXService:
 
 \\begin{{center}}
     {{\\Huge \\scshape {name}}} \\\\ \\vspace{{1pt}}
-    \\small {phone} $|$ \\href{{mailto:{email}}}{{{email}}} $|$ {location}
+    \\small Phone: {phone} | Email: \\href{{mailto:{email}}}{{{email}}} | Location: {location}
 \\end{{center}}
 
 \\section{{Summary}}
-{resume_data.get('summary', 'Professional summary goes here.')}
+{self._latex_escape(resume_data.get('summary', 'Professional summary goes here.'))}
 
 \\section{{Skills}}
 \\begin{{itemize}}[leftmargin=0.15in, label={{$\\bullet$}}]
@@ -144,7 +221,8 @@ class LaTeXService:
         
         # Add skills
         for skill in resume_data.get('skills', []):
-            latex_content += f"    \\item {skill}\n"
+            escaped_skill = self._latex_escape(str(skill))
+            latex_content += f"    \\item {escaped_skill}\n"
         
         latex_content += """
 \\end{itemize}
@@ -154,10 +232,10 @@ class LaTeXService:
         
         # Add experience
         for exp in resume_data.get('experience', []):
-            company = exp.get('company', '')
-            title = exp.get('title', '')
-            start_date = exp.get('startDate', '')
-            end_date = exp.get('endDate', '')
+            company = self._latex_escape(exp.get('company', ''))
+            title = self._latex_escape(exp.get('title', ''))
+            start_date = self._latex_escape(exp.get('startDate', ''))
+            end_date = self._latex_escape(exp.get('endDate', ''))
             
             latex_content += f"""
 \\textbf{{{title}}} \\hfill {start_date} -- {end_date} \\\\
@@ -166,7 +244,8 @@ class LaTeXService:
 """
             
             for desc in exp.get('description', []):
-                latex_content += f"    \\item {desc}\n"
+                escaped_desc = self._latex_escape(str(desc))
+                latex_content += f"    \\item {escaped_desc}\n"
             
             latex_content += "\\end{itemize}\n"
         
@@ -176,10 +255,10 @@ class LaTeXService:
         
         # Add education
         for edu in resume_data.get('education', []):
-            degree = edu.get('degree', '')
-            institution = edu.get('institution', '')
-            start_date = edu.get('startDate', '')
-            end_date = edu.get('endDate', '')
+            degree = self._latex_escape(edu.get('degree', ''))
+            institution = self._latex_escape(edu.get('institution', ''))
+            start_date = self._latex_escape(edu.get('startDate', ''))
+            end_date = self._latex_escape(edu.get('endDate', ''))
             
             latex_content += f"""
 \\textbf{{{degree}}} \\hfill {start_date} -- {end_date} \\\\
@@ -193,9 +272,9 @@ class LaTeXService:
 """
             
             for project in resume_data.get('projects', []):
-                name = project.get('name', '')
-                description = project.get('description', '')
-                technologies = ', '.join(project.get('technologies', []))
+                name = self._latex_escape(project.get('name', ''))
+                description = self._latex_escape(project.get('description', ''))
+                technologies = ', '.join([self._latex_escape(str(tech)) for tech in project.get('technologies', [])])
                 
                 latex_content += f"""
 \\textbf{{{name}}} \\\\

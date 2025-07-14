@@ -13,7 +13,11 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-const ResumeGenerator: React.FC = () => {
+interface ResumeGeneratorProps {
+  user?: any;
+}
+
+const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ user }) => {
   const [inputType, setInputType] = useState<'linkedin' | 'upload'>('linkedin');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);

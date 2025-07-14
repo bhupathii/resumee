@@ -12,7 +12,11 @@ import {
   CreditCard
 } from 'lucide-react';
 
-const PaymentPage: React.FC = () => {
+interface PaymentPageProps {
+  user?: any;
+}
+
+const PaymentPage: React.FC<PaymentPageProps> = ({ user }) => {
   const [email, setEmail] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
