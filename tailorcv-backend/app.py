@@ -51,10 +51,17 @@ def google_auth():
     """
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+            
         google_token = data.get('token')
         
         if not google_token:
             return jsonify({"error": "Google token is required"}), 400
+        
+        # Check if Google Client ID is configured
+        if not auth_service.google_client_id:
+            return jsonify({"error": "Google authentication not configured on server"}), 500
         
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
         
@@ -62,7 +69,7 @@ def google_auth():
         auth_result = auth_service.authenticate_user(google_token, client_ip)
         
         if not auth_result:
-            return jsonify({"error": "Invalid Google token"}), 401
+            return jsonify({"error": "Invalid Google token or authentication failed"}), 401
         
         return jsonify({
             "success": True,
@@ -79,6 +86,7 @@ def google_auth():
         })
         
     except Exception as e:
+        print(f"Google auth error: {str(e)}")
         return jsonify({"error": f"Authentication failed: {str(e)}"}), 500
 
 @app.route('/api/auth/logout', methods=['POST'])

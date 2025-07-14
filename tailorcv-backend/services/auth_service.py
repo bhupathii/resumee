@@ -20,12 +20,21 @@ class AuthService:
         Verify Google OAuth token and extract user information
         """
         try:
+            if not self.google_client_id:
+                print("Google Client ID not configured")
+                return None
+                
             # Verify the token with Google
             idinfo = id_token.verify_oauth2_token(
                 google_token, 
                 google_requests.Request(), 
                 self.google_client_id
             )
+            
+            # Check if the token is for our client ID
+            if idinfo['aud'] != self.google_client_id:
+                print(f"Token audience mismatch. Expected: {self.google_client_id}, Got: {idinfo.get('aud')}")
+                return None
             
             # Extract user information
             user_info = {
