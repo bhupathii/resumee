@@ -13,11 +13,11 @@
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/static/$1"
+      "dest": "/tailorcv-frontend/build/static/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/tailorcv-frontend/build/index.html"
     }
   ]
 }
