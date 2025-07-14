@@ -43,9 +43,14 @@ class LaTeXService:
     
     def generate_pdf(self, resume_data: Dict[str, Any], is_premium: bool = False) -> bytes:
         """
-        Generate PDF from resume data using LaTeX
+        Generate PDF from resume data using LaTeX or fallback to ReportLab
         """
         try:
+            # Check if LaTeX is available
+            if not self.validate_latex_installation():
+                logging.warning("LaTeX not available, using fallback PDF generation")
+                return self._generate_fallback_pdf(resume_data, is_premium)
+            
             # Choose template based on premium status
             template_name = 'premium_resume.tex' if is_premium else 'free_resume.tex'
             
@@ -58,8 +63,9 @@ class LaTeXService:
             return pdf_content
             
         except Exception as e:
-            logging.error(f"PDF generation failed: {str(e)}")
-            raise Exception(f"Failed to generate PDF: {str(e)}")
+            logging.error(f"LaTeX PDF generation failed: {str(e)}, falling back to ReportLab")
+            # Fallback to ReportLab if LaTeX fails
+            return self._generate_fallback_pdf(resume_data, is_premium)
     
     def _generate_latex_content(self, resume_data: Dict[str, Any], template_name: str, is_premium: bool) -> str:
         """
@@ -199,7 +205,7 @@ class LaTeXService:
 \\usepackage{{hyperref}}
 \\usepackage{{xcolor}}
 \\usepackage[T1]{{fontenc}}
-\\usepackage{{lmodern}}
+\\usepackage{{times}}
 {watermark}
 
 \\pagestyle{{empty}}
@@ -318,3 +324,16 @@ class LaTeXService:
                     templates.append(file)
         
         return templates
+    
+    def _generate_fallback_pdf(self, resume_data: Dict[str, Any], is_premium: bool = False) -> bytes:
+        """
+        Generate PDF using ReportLab as fallback when LaTeX is not available
+        """
+        try:
+            from .pdf_fallback_service import PDFFallbackService
+            fallback_service = PDFFallbackService()
+            return fallback_service.generate_pdf(resume_data, is_premium)
+        except ImportError:
+            raise Exception("ReportLab not available for fallback PDF generation. Please install reportlab: pip install reportlab")
+        except Exception as e:
+            raise Exception(f"Fallback PDF generation failed: {str(e)}")
