@@ -10,7 +10,7 @@ cmds = [
 cmds = ["echo 'Build completed'"]
 
 [start]
-cmd = "python app_ultra_minimal.py"
+cmd = "python app_minimal.py"
 
 [variables]
 PYTHONUNBUFFERED = "1"
