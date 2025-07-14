@@ -73,7 +73,9 @@ def health_check():
                 "port": os.environ.get('PORT', '5000'),
                 "debug": os.environ.get('DEBUG', 'False'),
                 "google_client_id_set": bool(os.environ.get('GOOGLE_CLIENT_ID')),
-                "supabase_url_set": bool(os.environ.get('SUPABASE_URL'))
+                "supabase_url_set": bool(os.environ.get('SUPABASE_URL')),
+                "supabase_anon_key_set": bool(os.environ.get('SUPABASE_ANON_KEY')),
+                "jwt_secret_set": bool(os.environ.get('JWT_SECRET'))
             }
         }
         return jsonify(status), 200
