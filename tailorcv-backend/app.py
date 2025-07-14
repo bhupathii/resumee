@@ -112,12 +112,10 @@ def google_auth():
         
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
         
-        # Authenticate user
+        # Authenticate user. This will now propagate the detailed exception.
         auth_result = auth_service.authenticate_user(google_token, client_ip)
         
-        if not auth_result:
-            return jsonify({"error": "Invalid Google token or authentication failed"}), 401
-        
+        # This part will now only be reached on success.
         return jsonify({
             "success": True,
             "user": {
@@ -131,10 +129,18 @@ def google_auth():
             "session_token": auth_result['session_token'],
             "expires_at": auth_result['expires_at']
         })
+
+    except ValueError as e:
+        # Catch the specific error from token verification and return it as a clear 401 Unauthorized error.
+        return jsonify({"error": f"Google token validation failed: {str(e)}"}), 401
         
     except Exception as e:
+        # Catch other potential errors during user creation or session handling.
         print(f"Google auth error: {str(e)}")
-        return jsonify({"error": f"Authentication failed: {str(e)}"}), 500
+        # Check for Supabase RLS error specifically
+        if "violates row-level security policy" in str(e):
+             return jsonify({"error": "Database security policy is blocking user creation. Please check your Supabase RLS policies for the 'users' table."}), 500
+        return jsonify({"error": f"An unexpected authentication error occurred: {str(e)}"}), 500
 
 @app.route('/api/auth/logout', methods=['POST'])
 def logout():

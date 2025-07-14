@@ -50,14 +50,15 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ user, onLogin, onLogout }) => {
         onLogin(data.user);
         setError(null);
       } else {
-        const errorMsg = data.error || 'Authentication failed';
+        const errorMsg = data.error || 'An unknown authentication error occurred.';
         console.error('Authentication failed:', errorMsg);
-        setError(errorMsg);
+        // Make the error message more prominent and clear
+        setError(`Authentication Failed: ${errorMsg}`);
       }
     } catch (error: any) {
-      const errorMsg = error.message || 'Authentication failed. Please try again.';
+      const errorMsg = error.message || 'A network or server error occurred. Please try again.';
       console.error('Google Auth error:', error);
-      setError(errorMsg);
+      setError(`Error: ${errorMsg}`);
     } finally {
       setIsLoading(false);
     }
@@ -256,7 +257,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = ({ user, onLogin, onLogout }) => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-red-600 bg-red-50 px-3 py-1 rounded-md max-w-xs text-center"
+          className="text-xs text-red-600 bg-red-100 border border-red-200 px-3 py-2 rounded-md max-w-sm text-center shadow-md"
         >
           {error}
         </motion.div>

@@ -17,13 +17,13 @@ class AuthService:
         
     def verify_google_token(self, google_token: str) -> Optional[Dict[str, Any]]:
         """
-        Verify Google OAuth token and extract user information
+        Verify Google OAuth token and extract user information.
+        Returns user_info on success, raises an exception on failure.
         """
+        if not self.google_client_id:
+            raise ValueError("Google Client ID not configured on the server.")
+            
         try:
-            if not self.google_client_id:
-                print("Google Client ID not configured")
-                return None
-                
             # Verify the token with Google
             idinfo = id_token.verify_oauth2_token(
                 google_token, 
@@ -31,10 +31,12 @@ class AuthService:
                 self.google_client_id
             )
             
-            # Check if the token is for our client ID
+            # The audience of the token must match our client ID.
             if idinfo['aud'] != self.google_client_id:
-                print(f"Token audience mismatch. Expected: {self.google_client_id}, Got: {idinfo.get('aud')}")
-                return None
+                # This is the most common error.
+                error_msg = f"Token audience mismatch. The token was issued for a different client ID. Ensure frontend and backend are using the same Google Client ID."
+                print(f"AUDIENCE MISMATCH. Token AUD: {idinfo.get('aud')} | Server's GOOGLE_CLIENT_ID: {self.google_client_id}")
+                raise ValueError(error_msg)
             
             # Extract user information
             user_info = {
@@ -48,69 +50,65 @@ class AuthService:
             return user_info
             
         except ValueError as e:
-            print(f"Invalid Google token: {str(e)}")
-            return None
-        except Exception as e:
-            print(f"Error verifying Google token: {str(e)}")
-            return None
+            # This will catch the audience mismatch error above, or other verification errors.
+            print(f"Google token verification failed: {str(e)}")
+            # Re-raise the exception to be caught by the calling function.
+            raise
     
     def authenticate_user(self, google_token: str, ip_address: str) -> Optional[Dict[str, Any]]:
         """
-        Authenticate user with Google token and create/update user record
+        Authenticate user with Google token and create/update user record.
+        Now raises ValueError on token verification failure.
         """
-        try:
-            # Verify Google token
-            user_info = self.verify_google_token(google_token)
-            if not user_info:
-                return None
-            
-            # Check if user exists
-            existing_user = self.supabase_service.client.table('users').select('*').eq('google_id', user_info['google_id']).execute()
-            
-            user_data = {
-                'google_id': user_info['google_id'],
-                'name': user_info['name'],
-                'email': user_info['email'],
-                'google_email': user_info['email'],
-                'profile_picture': user_info['profile_picture'],
-                'ip': ip_address,
-                'auth_provider': 'google',
-                'last_login': datetime.now().isoformat()
-            }
-            
-            if existing_user.data:
-                # Update existing user
-                user_id = existing_user.data[0]['id']
-                self.supabase_service.client.table('users').update(user_data).eq('id', user_id).execute()
-                user_record = existing_user.data[0]
-                user_record.update(user_data)
-            else:
-                # Create new user
-                response = self.supabase_service.client.table('users').insert(user_data).execute()
-                user_record = response.data[0]
-                user_id = user_record['id']
-                
-                # Create default preferences
-                self.supabase_service.client.table('user_preferences').insert({
-                    'user_id': user_id,
-                    'theme': 'light',
-                    'email_notifications': True,
-                    'preferred_template': 'professional'
-                }).execute()
-            
-            # Create session
-            session_token = self.create_session(user_id)
-            
-            # Return user data with session
-            return {
-                'user': user_record,
-                'session_token': session_token,
-                'expires_at': (datetime.now() + timedelta(hours=self.session_duration_hours)).isoformat()
-            }
-            
-        except Exception as e:
-            print(f"Error authenticating user: {str(e)}")
+        # Verify Google token. This will now raise an exception on failure.
+        user_info = self.verify_google_token(google_token)
+        if not user_info:
+            # This case should ideally not be reached if verify_google_token raises exceptions.
             return None
+        
+        # Check if user exists
+        existing_user = self.supabase_service.client.table('users').select('*').eq('google_id', user_info['google_id']).execute()
+        
+        user_data = {
+            'google_id': user_info['google_id'],
+            'name': user_info['name'],
+            'email': user_info['email'],
+            'google_email': user_info['email'],
+            'profile_picture': user_info['profile_picture'],
+            'ip': ip_address,
+            'auth_provider': 'google',
+            'last_login': datetime.now().isoformat()
+        }
+        
+        if existing_user.data:
+            # Update existing user
+            user_id = existing_user.data[0]['id']
+            self.supabase_service.client.table('users').update(user_data).eq('id', user_id).execute()
+            user_record = existing_user.data[0]
+            user_record.update(user_data)
+        else:
+            # Create new user
+            response = self.supabase_service.client.table('users').insert(user_data).execute()
+            user_record = response.data[0]
+            user_id = user_record['id']
+            
+            # Create default preferences
+            self.supabase_service.client.table('user_preferences').insert({
+                'user_id': user_id,
+                'theme': 'light',
+                'email_notifications': True,
+                'preferred_template': 'professional'
+            }).execute()
+        
+        # Create session
+        session_token = self.create_session(user_id)
+        
+        # Return user data with session
+        return {
+            'user': user_record,
+            'session_token': session_token,
+            'expires_at': (datetime.now() + timedelta(hours=self.session_duration_hours)).isoformat()
+        }
     
     def create_session(self, user_id: str) -> str:
         """
