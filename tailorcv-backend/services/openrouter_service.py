@@ -7,7 +7,7 @@ class OpenRouterService:
     def __init__(self):
         self.api_key = os.environ.get('OPENROUTER_API_KEY')
         self.base_url = "https://openrouter.ai/api/v1"
-        self.model = "deepseek/deepseek-coder"  # Free model
+        self.model = "deepseek/deepseek-chat"  # Free model
         
     def optimize_resume(self, resume_data: str, job_description: str) -> Dict[str, Any]:
         """
