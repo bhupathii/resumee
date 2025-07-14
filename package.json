@@ -1,0 +1,31 @@
+{
+  "name": "tailorcv",
+  "version": "1.0.0",
+  "description": "AI-Powered Resume Generator",
+  "main": "tailorcv-backend/app.py",
+  "scripts": {
+    "start": "cd tailorcv-backend && python app.py",
+    "dev": "cd tailorcv-backend && python app.py",
+    "install-backend": "cd tailorcv-backend && pip install -r requirements.txt",
+    "install-frontend": "cd tailorcv-frontend && npm install",
+    "build-frontend": "cd tailorcv-frontend && npm run build",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "resume",
+    "ai",
+    "generator",
+    "job",
+    "career"
+  ],
+  "author": "TailorCV Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bhupathii/resumee.git"
+  }
+}

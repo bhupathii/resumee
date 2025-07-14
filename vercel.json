@@ -1,0 +1,20 @@
+{
+  "builds": [
+    {
+      "src": "tailorcv-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "tailorcv-frontend/$1"
+    }
+  ],
+  "buildCommand": "cd tailorcv-frontend && npm install && npm run build",
+  "outputDirectory": "tailorcv-frontend/build",
+  "framework": "create-react-app"
+}

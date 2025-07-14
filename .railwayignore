@@ -1,0 +1,16 @@
+# Railway ignore file
+node_modules/
+*.pyc
+__pycache__/
+.git/
+.DS_Store
+*.log
+.env.local
+.env.*.local
+tailorcv-frontend/node_modules/
+tailorcv-frontend/build/
+tailorcv-frontend/.env.local
+*.md
+debug_oauth_issue.py
+test_*.py
+verify_*.py
