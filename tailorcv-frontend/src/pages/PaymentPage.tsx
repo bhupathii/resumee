@@ -58,7 +58,8 @@ const PaymentPage: React.FC = () => {
       formData.append('screenshot', screenshot);
       formData.append('timestamp', new Date().toISOString());
 
-      const response = await fetch('/api/payment/upload', {
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/payment/upload`, {
         method: 'POST',
         body: formData,
       });

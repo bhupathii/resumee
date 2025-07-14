@@ -51,7 +51,8 @@ const ResumeGenerator: React.FC = () => {
         formData.append('resume', uploadedFile);
       }
 
-      const response = await fetch('/api/generate-resume', {
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/generate-resume`, {
         method: 'POST',
         body: formData,
       });
