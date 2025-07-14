@@ -8,6 +8,7 @@
     "dev": "cd tailorcv-backend && python app.py",
     "install-backend": "cd tailorcv-backend && pip install -r requirements.txt",
     "install-frontend": "cd tailorcv-frontend && npm install",
+    "build": "cd tailorcv-frontend && npm install && npm run build",
     "build-frontend": "cd tailorcv-frontend && npm run build",
     "test": "echo \"No tests specified\" && exit 0"
   },
