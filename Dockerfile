@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install only essential Python dependencies
-COPY tailorcv-backend/requirements.txt .
-RUN pip install --no-cache-dir flask flask-cors python-dotenv
+# Copy requirements and install all Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY tailorcv-backend ./
