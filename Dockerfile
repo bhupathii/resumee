@@ -23,8 +23,11 @@ RUN apt-get update && apt-get install -y \
 COPY tailorcv-backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire backend application code
+# Copy the entire backend application code, including the start script
 COPY tailorcv-backend/ ./
+
+# Make the startup script executable
+RUN chmod +x /app/start.sh
 
 # Set environment variables for the container
 ENV PYTHONPATH=/app
@@ -39,6 +42,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
-# Start the application using Gunicorn (production server)
-# Railway will pass the correct $PORT. We use 2 workers.
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "2", "app:app"]
+# Start the application using the startup script
+CMD ["/app/start.sh"]
