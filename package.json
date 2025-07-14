@@ -1,6 +1,6 @@
 {
   "name": "tailorcv",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-Powered Resume Generator",
   "main": "tailorcv-backend/app.py",
   "scripts": {

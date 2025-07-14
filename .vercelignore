@@ -1,0 +1,12 @@
+# Vercel ignore file
+tailorcv-backend/
+*.md
+*.py
+*.sql
+debug_*.py
+test_*.py
+verify_*.py
+railway.toml
+nixpacks.toml
+Dockerfile
+requirements.txt
