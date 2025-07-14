@@ -11,6 +11,7 @@ from services.linkedin_service import LinkedInService
 from services.pdf_service import PDFService
 from services.latex_service import LaTeXService
 from services.email_service import EmailService
+from services.auth_service import AuthService
 from utils.validators import validate_email, validate_file
 from utils.rate_limiter import RateLimiter
 import uuid
@@ -26,24 +27,140 @@ linkedin_service = LinkedInService()
 pdf_service = PDFService()
 latex_service = LaTeXService()
 email_service = EmailService()
+auth_service = AuthService()
 rate_limiter = RateLimiter()
+
+def get_current_user():
+    """
+    Get current user from session token (if provided)
+    """
+    auth_header = request.headers.get('Authorization')
+    if auth_header and auth_header.startswith('Bearer '):
+        session_token = auth_header.split(' ')[1]
+        return auth_service.get_user_by_session(session_token)
+    return None
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_auth():
+    """
+    Authenticate user with Google OAuth token
+    """
+    try:
+        data = request.get_json()
+        google_token = data.get('token')
+        
+        if not google_token:
+            return jsonify({"error": "Google token is required"}), 400
+        
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+        
+        # Authenticate user
+        auth_result = auth_service.authenticate_user(google_token, client_ip)
+        
+        if not auth_result:
+            return jsonify({"error": "Invalid Google token"}), 401
+        
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": auth_result['user']['id'],
+                "name": auth_result['user']['name'],
+                "email": auth_result['user']['email'],
+                "profile_picture": auth_result['user']['profile_picture'],
+                "is_premium": auth_result['user'].get('is_premium', False),
+                "generation_count": auth_result['user'].get('generation_count', 0)
+            },
+            "session_token": auth_result['session_token'],
+            "expires_at": auth_result['expires_at']
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Authentication failed: {str(e)}"}), 500
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """
+    Log out current user
+    """
+    try:
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Session token required"}), 400
+        
+        session_token = auth_header.split(' ')[1]
+        
+        if auth_service.logout_user(session_token):
+            return jsonify({"success": True, "message": "Logged out successfully"})
+        else:
+            return jsonify({"error": "Failed to logout"}), 500
+            
+    except Exception as e:
+        return jsonify({"error": f"Logout failed: {str(e)}"}), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user_info():
+    """
+    Get current user information
+    """
+    try:
+        user = get_current_user()
+        
+        if not user:
+            return jsonify({"error": "Not authenticated"}), 401
+        
+        # Get premium status
+        premium_status = auth_service.check_premium_status_authenticated(user['id'])
+        
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": user['id'],
+                "name": user['name'],
+                "email": user['email'],
+                "profile_picture": user['profile_picture'],
+                "is_premium": premium_status['is_premium'],
+                "generation_count": premium_status['generation_count'],
+                "last_generated": premium_status.get('last_generated'),
+                "upgraded_at": premium_status.get('upgraded_at')
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to get user info: {str(e)}"}), 500
 
 @app.route('/api/generate-resume', methods=['POST'])
 def generate_resume():
     try:
         client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
         
-        if not rate_limiter.allow_request(client_ip):
-            return jsonify({"error": "Too many requests. Please try again later."}), 429
+        # Get current user (if authenticated)
+        current_user = get_current_user()
+        
+        # Check rate limiting (higher limits for authenticated users)
+        if current_user:
+            # Authenticated users get higher rate limits
+            premium_status = auth_service.check_premium_status_authenticated(current_user['id'])
+            is_premium = premium_status['is_premium']
+            # Use premium rate limiter if premium, otherwise standard authenticated rate
+            max_requests = 50 if is_premium else 10
+        else:
+            # Guest users
+            if not rate_limiter.allow_request(client_ip):
+                return jsonify({"error": "Too many requests. Please try again later."}), 429
+            is_premium = False
         
         linkedin_url = request.form.get('linkedinUrl')
         job_description = request.form.get('jobDescription')
         email = request.form.get('email')
         resume_file = request.files.get('resume')
+        
+        # Use authenticated user's email if available
+        if current_user and not email:
+            email = current_user['email']
         
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
@@ -73,10 +190,17 @@ def generate_resume():
         except Exception as e:
             return jsonify({"error": f"Failed to optimize resume: {str(e)}"}), 500
         
-        is_premium = False
-        if email:
+        # Determine premium status
+        if current_user:
+            # For authenticated users, use their premium status
+            premium_status = auth_service.check_premium_status_authenticated(current_user['id'])
+            is_premium = premium_status['is_premium']
+        elif email:
+            # For guest users with email, check premium status
             user_status = supabase_service.check_user_premium_status(email, client_ip)
             is_premium = user_status.get('is_premium', False)
+        else:
+            is_premium = False
         
         try:
             pdf_buffer = latex_service.generate_pdf(optimized_resume, is_premium)
@@ -94,7 +218,21 @@ def generate_resume():
         except Exception as e:
             return jsonify({"error": f"Failed to upload resume: {str(e)}"}), 500
         
-        supabase_service.log_generation(email, client_ip, job_description[:100])
+        # Log generation with user_id if authenticated
+        generation_data = {
+            'email': email,
+            'ip': client_ip,
+            'job_description_snippet': job_description[:100],
+            'resume_url': file_url,
+            'is_premium': is_premium
+        }
+        
+        if current_user:
+            generation_data['user_id'] = current_user['id']
+            # Increment generation count for authenticated users
+            auth_service.increment_generation_count(current_user['id'])
+        
+        supabase_service.client.table('generations').insert(generation_data).execute()
         
         if email:
             try:
@@ -108,7 +246,11 @@ def generate_resume():
             "success": True,
             "resumeUrl": file_url,
             "isPremium": is_premium,
-            "message": "Resume generated successfully"
+            "message": "Resume generated successfully",
+            "user": {
+                "authenticated": current_user is not None,
+                "generation_count": premium_status.get('generation_count', 0) if current_user else None
+            }
         })
         
     except Exception as e:
