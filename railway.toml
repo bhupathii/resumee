@@ -2,8 +2,11 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python tailorcv-backend/app.py"
+startCommand = "python tailorcv-backend/app_minimal.py"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+[build.env]
+PYTHONUNBUFFERED = "1"
