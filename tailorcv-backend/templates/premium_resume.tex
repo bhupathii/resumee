@@ -1,0 +1,182 @@
+% Premium Resume Template for TailorCV
+\documentclass[letterpaper,11pt]{article}
+\usepackage[left=0.75in,top=0.6in,right=0.75in,bottom=0.6in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{graphicx}
+\usepackage{tikz}
+
+\pagestyle{empty}
+\setlength{\tabcolsep}{0em}
+
+% Premium color scheme
+\definecolor{primary}{RGB}{30, 41, 59}
+\definecolor{secondary}{RGB}{51, 65, 85}
+\definecolor{accent}{RGB}{59, 130, 246}
+\definecolor{light}{RGB}{248, 250, 252}
+
+% Enhanced section formatting
+\titleformat{\section}{\vspace{-4pt}\scshape\raggedright\large\bfseries\color{primary}}{}{0em}{}[\color{accent}\titlerule \vspace{-5pt}]
+
+% Custom commands
+\newcommand{\resumeItem}[1]{\item\small{#1}}
+\newcommand{\resumeSubHeading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{\color{primary}#1} & \textcolor{secondary}{#2} \\
+      \textit{\small\color{secondary}#3} & \textit{\small\color{secondary} #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\begin{document}
+
+% Enhanced Header with better styling
+\begin{center}
+    % Name with underline
+    {\Huge \scshape \color{primary} {{ personal_info.name }}} \\
+    \vspace{5pt}
+    
+    % Contact information with icons
+    \begin{tikzpicture}[remember picture,overlay]
+        \draw[color=accent,line width=1pt] ([yshift=-2pt]current page.north west) -- ([yshift=-2pt]current page.north east);
+    \end{tikzpicture}
+    
+    \small 
+    {% if personal_info.phone %}
+        \faPhone\ {{ personal_info.phone }}
+    {% endif %}
+    {% if personal_info.email %}
+        {% if personal_info.phone %}$|${% endif %} \faEnvelope\ \href{mailto:{{ personal_info.email }}}{{{ personal_info.email }}}
+    {% endif %}
+    {% if personal_info.location %}
+        $|$ \faMapMarker\ {{ personal_info.location }}
+    {% endif %}
+    {% if personal_info.linkedin %}
+        $|$ \faLinkedin\ \href{{{ personal_info.linkedin }}}{LinkedIn}
+    {% endif %}
+    {% if personal_info.github %}
+        $|$ \faGithub\ \href{{{ personal_info.github }}}{GitHub}
+    {% endif %}
+    {% if personal_info.website %}
+        $|$ \faGlobe\ \href{{{ personal_info.website }}}{Portfolio}
+    {% endif %}
+\end{center}
+
+% Professional Summary
+{% if summary %}
+\section{Professional Summary}
+\begin{quote}
+    \textit{{{ summary }}}
+\end{quote}
+{% endif %}
+
+% Core Competencies (Enhanced Skills Section)
+{% if skills %}
+\section{Core Competencies}
+\begin{itemize}[leftmargin=0.15in, label={\textcolor{accent}{$\bullet$}}]
+    {% for skill in skills %}
+    \resumeItem{{{ skill }}}
+    {% endfor %}
+\end{itemize}
+{% endif %}
+
+% Professional Experience
+{% if experience %}
+\section{Professional Experience}
+\resumeSubHeadingListStart
+    {% for exp in experience %}
+    \resumeSubHeading
+        {{{ exp.title }}}{{{ exp.startDate }} -- {{ exp.endDate }}}
+        {{{ exp.company }}}{{{ exp.location }}}
+        \resumeItemListStart
+            {% for desc in exp.description %}
+            \resumeItem{{{ desc }}}
+            {% endfor %}
+        \resumeItemListEnd
+    {% endfor %}
+\resumeSubHeadingListEnd
+{% endif %}
+
+% Education
+{% if education %}
+\section{Education}
+\resumeSubHeadingListStart
+    {% for edu in education %}
+    \resumeSubHeading
+        {{{ edu.degree }}}{{{ edu.startDate }} -- {{ edu.endDate }}}
+        {{{ edu.institution }}}{{{ edu.location }}}
+        {% if edu.gpa or edu.relevantCourses %}
+        \resumeItemListStart
+            {% if edu.gpa %}
+            \resumeItem{GPA: {{ edu.gpa }}}
+            {% endif %}
+            {% if edu.relevantCourses %}
+            \resumeItem{Relevant Coursework: {{ edu.relevantCourses | join(', ') }}}
+            {% endif %}
+        \resumeItemListEnd
+        {% endif %}
+    {% endfor %}
+\resumeSubHeadingListEnd
+{% endif %}
+
+% Projects
+{% if projects %}
+\section{Notable Projects}
+\resumeSubHeadingListStart
+    {% for project in projects %}
+    \resumeProjectHeading
+        {\textbf{{{ project.name }}} 
+        {% if project.link %} 
+        $|$ \href{{{ project.link }}}{\faExternalLink\ Live Demo}
+        {% endif %}
+        {% if project.github %}
+        $|$ \href{{{ project.github }}}{\faGithub\ Code}
+        {% endif %}
+        }
+        {{% if project.technologies %}{{ project.technologies | join(' • ') }}{% endif %}}
+        \resumeItemListStart
+            \resumeItem{{{ project.description }}}
+        \resumeItemListEnd
+    {% endfor %}
+\resumeSubHeadingListEnd
+{% endif %}
+
+% Certifications
+{% if certifications %}
+\section{Certifications \& Licenses}
+\resumeSubHeadingListStart
+    {% for cert in certifications %}
+    \resumeProjectHeading
+        {\textbf{{{ cert.name }}}{% if cert.link %} \href{{{ cert.link }}}{\faExternalLink}{% endif %}}
+        {{{ cert.issuer }} $|$ {{ cert.date }}}
+    {% endfor %}
+\resumeSubHeadingListEnd
+{% endif %}
+
+\end{document}
