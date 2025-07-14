@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "tailorcv-backend/Dockerfile"
+dockerfilePath = "Dockerfile"
+buildCommand = "docker build --timeout 1800 -t tailorcv ."
 
 [deploy]
 startCommand = "python app.py"

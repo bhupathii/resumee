@@ -1,30 +1,23 @@
-# TailorCV Backend Dockerfile
+# TailorCV Backend Dockerfile - Lightweight Version
 FROM python:3.9-slim
 
-# Set environment variables to avoid interactive prompts
+# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=5000
 
-# Update package list and install minimal LaTeX first
+# Install minimal system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install LaTeX in a separate layer to improve caching
+# Install only essential LaTeX packages for faster builds
 RUN apt-get update && apt-get install -y --no-install-recommends \
     texlive-latex-base \
     texlive-latex-recommended \
-    texlive-fonts-recommended \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install additional LaTeX packages in another layer
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    texlive-latex-extra \
-    texlive-fonts-extra \
-    texlive-xetex \
-    latexmk \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -41,11 +34,6 @@ COPY tailorcv-backend/ .
 
 # Create directory for temporary files
 RUN mkdir -p /tmp/tailorcv
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV PORT=5000
 
 # Expose port
 EXPOSE 5000
