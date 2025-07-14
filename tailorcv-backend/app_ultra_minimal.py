@@ -3,7 +3,7 @@
 Ultra-minimal TailorCV backend for Docker debugging
 Starts immediately without loading any services
 """
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import sys
@@ -51,7 +51,53 @@ def root():
     return jsonify({
         "message": "TailorCV Backend is running",
         "health": "/api/health",
-        "test": "/api/test"
+        "test": "/api/test",
+        "auth": "/api/auth/google"
+    }), 200
+
+@app.route('/api/auth/google', methods=['POST'])
+def google_auth():
+    """Google OAuth authentication - Ultra-minimal version"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body is required"}), 400
+            
+        google_token = data.get('token')
+        if not google_token:
+            return jsonify({"error": "Google token is required"}), 400
+        
+        # Ultra-minimal response - no actual authentication
+        # This is for testing the connection only
+        return jsonify({
+            "error": "Google authentication not configured in ultra-minimal mode",
+            "message": "Backend is running but auth services are not loaded",
+            "received_token": bool(google_token),
+            "timestamp": datetime.now().isoformat()
+        }), 503
+        
+    except Exception as e:
+        return jsonify({
+            "error": f"Authentication failed: {str(e)}",
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/auth/me', methods=['GET'])
+def get_current_user():
+    """Get current user - Ultra-minimal version"""
+    return jsonify({
+        "error": "Authentication service not available in ultra-minimal mode",
+        "message": "Backend is running but auth services are not loaded",
+        "timestamp": datetime.now().isoformat()
+    }), 503
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Logout - Ultra-minimal version"""
+    return jsonify({
+        "message": "Logout endpoint reached",
+        "note": "No actual logout in ultra-minimal mode",
+        "timestamp": datetime.now().isoformat()
     }), 200
 
 @app.errorhandler(404)
