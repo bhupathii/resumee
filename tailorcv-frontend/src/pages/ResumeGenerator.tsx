@@ -46,11 +46,11 @@ const ResumeGenerator: React.FC<ResumeGeneratorProps> = ({ user }) => {
 
     try {
       const formData = new FormData();
-      formData.append('jobDescription', jobDescription);
+      formData.append('job_description', jobDescription);
       formData.append('email', email);
       
       if (inputType === 'linkedin') {
-        formData.append('linkedinUrl', linkedinUrl);
+        formData.append('linkedin_url', linkedinUrl);
       } else if (uploadedFile) {
         formData.append('resume', uploadedFile);
       }
