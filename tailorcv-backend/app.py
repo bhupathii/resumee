@@ -29,7 +29,14 @@ from utils.validators import validate_email, validate_file
 from utils.rate_limiter import standard_limiter, premium_limiter
 import uuid
 
+# Load .env first, then override with .env.local for development
+import os
 load_dotenv()
+if os.path.exists('.env.local'):
+    load_dotenv('.env.local', override=True)
+    
+# Debug: Print current GEMINI_API_KEY for troubleshooting
+print(f"GEMINI_API_KEY: {os.environ.get('GEMINI_API_KEY', 'NOT_SET')}")
 
 app = Flask(__name__)
 CORS(app)
@@ -240,8 +247,15 @@ def generate_resume():
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
         
+        # In demo mode, allow generation with just job description
+        demo_mode = os.environ.get('GEMINI_API_KEY') == 'test-gemini-key-for-local-development'
+        
         if not linkedin_profile_url and not uploaded_resume:
-            return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
+            if demo_mode:
+                print("Demo mode: Using default resume data for testing.")
+                resume_text = "Professional software developer with experience in web development, JavaScript, Python, and modern frameworks. Skilled in building responsive applications and working in collaborative environments."
+            else:
+                return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
 
         if template_name not in ['free_resume', 'premium_resume', 'jakes_resume']:
             return jsonify({"error": "Invalid template name"}), 400

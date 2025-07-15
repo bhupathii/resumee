@@ -8,16 +8,23 @@ class GeminiService:
         self.api_key = os.environ.get('GEMINI_API_KEY')
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         
-        # Validate API key is configured
-        if not self.api_key or self.api_key == "your-gemini-api-key":
+        # Check if running in demo mode (for local development)
+        self.demo_mode = (
+            self.api_key == "test-gemini-key-for-local-development" or
+            os.environ.get('DEBUG') == 'True' and self.api_key == "your-gemini-api-key"
+        )
+        
+        # Validate API key is configured (unless in demo mode)
+        if not self.demo_mode and (not self.api_key or self.api_key == "your-gemini-api-key"):
             raise Exception("GEMINI_API_KEY environment variable is required and must be set to a valid API key")
         
     def optimize_resume(self, resume_data: str, job_description: str) -> Dict[str, Any]:
         """
         Use Gemini API to optimize resume content based on job description
         """
-        if not self.api_key or self.api_key == "your-gemini-api-key":
-            raise Exception("Gemini API key is required. Please set GEMINI_API_KEY environment variable.")
+        # If in demo mode, return structured demo data
+        if self.demo_mode:
+            return self._get_demo_resume_data(resume_data, job_description)
             
         prompt = self._create_optimization_prompt(resume_data, job_description)
         response = self._call_gemini_api(prompt)
@@ -178,6 +185,98 @@ IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
         except Exception as e:
             raise Exception(f"Error parsing Gemini response: {e}")
     
+    def _get_demo_resume_data(self, resume_data: str, job_description: str) -> Dict[str, Any]:
+        """
+        Generate demo resume data for local development/testing
+        """
+        return {
+            "personalInfo": {
+                "name": "Alex Johnson",
+                "email": "alex.johnson@email.com",
+                "phone": "+1 (555) 123-4567",
+                "location": "San Francisco, CA",
+                "linkedin": "linkedin.com/in/alexjohnson",
+                "github": "github.com/alexjohnson",
+                "website": "alexjohnson.dev"
+            },
+            "summary": f"Experienced professional optimized for {job_description.lower()} with proven expertise in web development, programming, and technology solutions. Skilled in modern development practices and committed to delivering high-quality results.",
+            "skills": [
+                "JavaScript/TypeScript",
+                "React.js & Next.js",
+                "Python & Flask",
+                "Node.js",
+                "SQL/NoSQL Databases",
+                "Git/Version Control",
+                "HTML/CSS",
+                "API Development",
+                "Problem Solving",
+                "Team Collaboration"
+            ],
+            "experience": [
+                {
+                    "title": "Software Developer",
+                    "company": "Tech Solutions Inc.",
+                    "location": "San Francisco, CA",
+                    "startDate": "01/2022",
+                    "endDate": "Present",
+                    "description": [
+                        "Developed web applications using React and Python, serving thousands of users daily",
+                        "Collaborated with cross-functional teams to deliver features on schedule",
+                        "Implemented responsive designs and optimized application performance",
+                        "Participated in code reviews and maintained high code quality standards"
+                    ]
+                },
+                {
+                    "title": "Junior Developer",
+                    "company": "Digital Agency",
+                    "location": "San Francisco, CA", 
+                    "startDate": "06/2021",
+                    "endDate": "12/2021",
+                    "description": [
+                        "Built responsive web interfaces using modern frontend technologies",
+                        "Worked on API integration and database management",
+                        "Supported senior developers in project planning and execution"
+                    ]
+                }
+            ],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Computer Science",
+                    "institution": "University of California, San Francisco",
+                    "location": "San Francisco, CA",
+                    "startDate": "08/2017",
+                    "endDate": "05/2021",
+                    "gpa": "3.8",
+                    "relevantCourses": ["Data Structures", "Algorithms", "Web Development", "Software Engineering"]
+                }
+            ],
+            "projects": [
+                {
+                    "name": "Resume Builder Application",
+                    "description": "Full-stack web application for creating professional resumes with AI optimization",
+                    "technologies": ["React", "Python", "Flask", "PostgreSQL"],
+                    "date": "2023",
+                    "github": "github.com/alexjohnson/resume-builder",
+                    "link": "resume-builder.alexjohnson.dev"
+                },
+                {
+                    "name": "Task Management System",
+                    "description": "Collaborative task management tool with real-time updates and team features",
+                    "technologies": ["JavaScript", "Node.js", "MongoDB", "Socket.io"],
+                    "date": "2022",
+                    "github": "github.com/alexjohnson/task-manager",
+                    "link": "tasks.alexjohnson.dev"
+                }
+            ],
+            "certifications": [
+                {
+                    "name": "AWS Certified Developer Associate",
+                    "issuer": "Amazon Web Services",
+                    "date": "10/2023",
+                    "link": "aws.amazon.com/certification"
+                }
+            ]
+        }
     
     def test_connection(self) -> bool:
         """
