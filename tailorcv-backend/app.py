@@ -18,7 +18,7 @@ from flask_cors import CORS
 import tempfile
 import json
 from dotenv import load_dotenv
-from services.openrouter_service import OpenRouterService
+from services.gemini_service import GeminiService
 from services.supabase_service import SupabaseService
 from services.linkedin_service import LinkedInService
 from services.pdf_service import PDFService
@@ -48,7 +48,7 @@ def initialize_service(service_name, service_class):
         service_status[service_name] = error_message
         return None
 
-openrouter_service = initialize_service('OpenRouter', OpenRouterService)
+gemini_service = initialize_service('Gemini', GeminiService)
 supabase_service = initialize_service('Supabase', SupabaseService)
 linkedin_service = initialize_service('LinkedIn', LinkedInService)
 pdf_service = initialize_service('PDF', PDFService)
@@ -206,7 +206,7 @@ def generate_resume():
     """
     Generates a resume from LinkedIn profile or uploaded resume
     """
-    if not openrouter_service or not latex_service or not supabase_service:
+    if not gemini_service or not latex_service or not supabase_service:
         return jsonify({"error": "One or more services required for resume generation are unavailable."}), 503
 
     try:
@@ -265,13 +265,13 @@ def generate_resume():
             print(f"Processing uploaded resume: {uploaded_resume.filename}")
             resume_text = pdf_service.extract_text_from_pdf(uploaded_resume)
         
-        # Use OpenRouter to tailor the resume
-        print("Generating tailored content with OpenRouter...")
-        tailored_content = openrouter_service.optimize_resume(resume_text, job_description)
+        # Use Gemini to tailor the resume
+        print("Generating tailored content with Gemini...")
+        tailored_content = gemini_service.optimize_resume(resume_text, job_description)
         
         # The optimize_resume method already returns a dict, no need to parse JSON
         if not isinstance(tailored_content, dict):
-            print("Warning: OpenRouter returned non-dict content, using fallback structure.")
+            print("Warning: Gemini returned non-dict content, using fallback structure.")
             tailored_content = {"summary": str(tailored_content), "experience": [], "skills": []}
 
         # Generate LaTeX PDF

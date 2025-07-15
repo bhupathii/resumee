@@ -51,6 +51,12 @@ def test_imports():
         except Exception as e:
             print(f"❌ LaTeXService import failed: {e}")
             
+        try:
+            from services.gemini_service import GeminiService
+            print("✅ GeminiService imported")
+        except Exception as e:
+            print(f"❌ GeminiService import failed: {e}")
+            
         return True
         
     except ImportError as e:
