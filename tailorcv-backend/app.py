@@ -240,46 +240,50 @@ def generate_resume():
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
         
-        # Allow generation with just job description for testing (use default resume data)
         if not linkedin_profile_url and not uploaded_resume:
-            print("No LinkedIn URL or resume provided. Using default resume data for testing.")
-            resume_text = "John Doe - Software Engineer with 3 years of experience in React, Python, and JavaScript. Experienced in building web applications and working with databases."
+            return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
 
         if template_name not in ['free_resume', 'premium_resume', 'jakes_resume']:
             return jsonify({"error": "Invalid template name"}), 400
 
-        # Process input (skip if using default resume data)
+        # Process input
         if linkedin_profile_url:
             print(f"Fetching LinkedIn profile: {linkedin_profile_url}")
-            profile_data = linkedin_service.extract_profile_data(linkedin_profile_url)
-            if not profile_data:
-                return jsonify({"error": "Failed to fetch LinkedIn profile"}), 500
-            
-            # Use the full profile text for analysis
-            resume_text = profile_data
+            try:
+                profile_data = linkedin_service.extract_profile_data(linkedin_profile_url)
+                resume_text = profile_data
+            except Exception as e:
+                return jsonify({"error": f"Failed to fetch LinkedIn profile: {str(e)}"}), 500
 
         elif uploaded_resume:
             if not validate_file(uploaded_resume):
                 return jsonify({"error": "Invalid file type or size"}), 400
 
             print(f"Processing uploaded resume: {uploaded_resume.filename}")
-            resume_text = pdf_service.extract_text_from_pdf(uploaded_resume)
+            try:
+                resume_text = pdf_service.extract_text_from_pdf(uploaded_resume)
+            except Exception as e:
+                return jsonify({"error": f"Failed to extract text from PDF: {str(e)}"}), 500
         
         # Use Gemini to tailor the resume
         print("Generating tailored content with Gemini...")
-        tailored_content = gemini_service.optimize_resume(resume_text, job_description)
+        try:
+            tailored_content = gemini_service.optimize_resume(resume_text, job_description)
+        except Exception as e:
+            return jsonify({"error": f"Failed to generate optimized resume content: {str(e)}"}), 500
         
-        # The optimize_resume method already returns a dict, no need to parse JSON
+        # Validate that we received proper data structure
         if not isinstance(tailored_content, dict):
-            print("Warning: Gemini returned non-dict content, using fallback structure.")
-            tailored_content = {"summary": str(tailored_content), "experience": [], "skills": []}
+            return jsonify({"error": "Invalid response format from AI service"}), 500
 
         # Generate LaTeX PDF
         print(f"Generating PDF with template: {template_name}.tex")
-        pdf_bytes = latex_service.generate_pdf(template_name, tailored_content, is_premium)
-
-        if not pdf_bytes:
-            return jsonify({"error": "Failed to generate PDF: LaTeX compilation failed"}), 500
+        try:
+            pdf_bytes = latex_service.generate_pdf(template_name, tailored_content, is_premium)
+            if not pdf_bytes:
+                return jsonify({"error": "Failed to generate PDF: PDF generation returned empty result"}), 500
+        except Exception as e:
+            return jsonify({"error": f"Failed to generate PDF: {str(e)}"}), 500
 
         # Save generation record to Supabase
         if user:

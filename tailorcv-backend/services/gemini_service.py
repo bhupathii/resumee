@@ -8,23 +8,20 @@ class GeminiService:
         self.api_key = os.environ.get('GEMINI_API_KEY')
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         
+        # Validate API key is configured
+        if not self.api_key or self.api_key == "your-gemini-api-key":
+            raise Exception("GEMINI_API_KEY environment variable is required and must be set to a valid API key")
+        
     def optimize_resume(self, resume_data: str, job_description: str) -> Dict[str, Any]:
         """
         Use Gemini API to optimize resume content based on job description
         """
         if not self.api_key or self.api_key == "your-gemini-api-key":
-            print("WARNING: Gemini API key not configured. Using mock data for testing.")
-            return self._get_mock_resume_data()
+            raise Exception("Gemini API key is required. Please set GEMINI_API_KEY environment variable.")
             
         prompt = self._create_optimization_prompt(resume_data, job_description)
-        
-        try:
-            response = self._call_gemini_api(prompt)
-            return self._parse_gemini_response(response)
-        except Exception as e:
-            print(f"Gemini API call failed: {str(e)}")
-            print("Falling back to mock data...")
-            return self._get_mock_resume_data()
+        response = self._call_gemini_api(prompt)
+        return self._parse_gemini_response(response)
     
     def _call_gemini_api(self, prompt: str) -> str:
         """
@@ -163,128 +160,34 @@ IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
             end_idx = response_text.rfind('}') + 1
             
             if start_idx == -1 or end_idx == 0:
-                raise ValueError("No JSON found in response")
+                raise ValueError(f"No JSON found in Gemini response. Response: {response_text[:200]}...")
             
             json_str = response_text[start_idx:end_idx]
             parsed_data = json.loads(json_str)
             
             # Validate required fields
             required_fields = ['personalInfo', 'summary', 'skills', 'experience']
-            for field in required_fields:
-                if field not in parsed_data:
-                    print(f"Warning: Missing required field '{field}', using fallback")
-                    return self._get_mock_resume_data()
+            missing_fields = [field for field in required_fields if field not in parsed_data]
+            if missing_fields:
+                raise ValueError(f"Gemini response missing required fields: {missing_fields}")
             
             return parsed_data
             
         except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON from Gemini response: {e}")
-            print(f"Response text: {response_text[:500]}...")
-            return self._get_mock_resume_data()
+            raise Exception(f"Failed to parse JSON from Gemini response: {e}. Response: {response_text[:500]}...")
         except Exception as e:
-            print(f"Error parsing Gemini response: {e}")
-            return self._get_mock_resume_data()
+            raise Exception(f"Error parsing Gemini response: {e}")
     
-    def _get_mock_resume_data(self) -> Dict[str, Any]:
-        """
-        Provide mock resume data for testing when API is unavailable
-        """
-        return {
-            "personalInfo": {
-                "name": "John Doe",
-                "email": "john.doe@email.com",
-                "phone": "+1 (555) 123-4567",
-                "location": "San Francisco, CA",
-                "linkedin": "linkedin.com/in/johndoe",
-                "github": "github.com/johndoe",
-                "website": "johndoe.dev"
-            },
-            "summary": "Experienced Software Engineer with 3+ years of expertise in full-stack development, specializing in React, Python, and cloud technologies. Proven track record of building scalable web applications and optimizing system performance.",
-            "skills": [
-                "JavaScript/TypeScript",
-                "React.js",
-                "Python",
-                "Node.js",
-                "SQL/NoSQL Databases",
-                "AWS/Cloud Services",
-                "Git/Version Control",
-                "Agile/Scrum Methodologies"
-            ],
-            "experience": [
-                {
-                    "title": "Software Engineer",
-                    "company": "Tech Innovations Inc.",
-                    "location": "San Francisco, CA",
-                    "startDate": "01/2022",
-                    "endDate": "Present",
-                    "description": [
-                        "Developed and maintained 5+ web applications using React and Python, serving 10,000+ daily active users",
-                        "Optimized database queries resulting in 40% improvement in application response time",
-                        "Collaborated with cross-functional teams to deliver features ahead of schedule in Agile environment"
-                    ]
-                },
-                {
-                    "title": "Junior Developer",
-                    "company": "StartupXYZ",
-                    "location": "Palo Alto, CA",
-                    "startDate": "06/2021",
-                    "endDate": "12/2021",
-                    "description": [
-                        "Built responsive web interfaces using React and modern CSS frameworks",
-                        "Implemented RESTful APIs using Python Flask framework",
-                        "Participated in code reviews and maintained 95%+ test coverage"
-                    ]
-                }
-            ],
-            "education": [
-                {
-                    "degree": "Bachelor of Science in Computer Science",
-                    "institution": "University of California, Berkeley",
-                    "location": "Berkeley, CA",
-                    "startDate": "08/2017",
-                    "endDate": "05/2021",
-                    "gpa": "3.7",
-                    "relevantCourses": ["Data Structures", "Algorithms", "Web Development", "Database Systems"]
-                }
-            ],
-            "projects": [
-                {
-                    "name": "E-Commerce Platform",
-                    "description": "Full-stack e-commerce application with payment integration and inventory management",
-                    "technologies": ["React", "Node.js", "MongoDB", "Stripe API"],
-                    "date": "03/2021",
-                    "github": "github.com/johndoe/ecommerce-platform",
-                    "link": "ecommerce-demo.johndoe.dev"
-                },
-                {
-                    "name": "Task Management App",
-                    "description": "Collaborative task management tool with real-time updates and team collaboration features",
-                    "technologies": ["Python", "Flask", "PostgreSQL", "WebSocket"],
-                    "date": "11/2020",
-                    "github": "github.com/johndoe/task-manager",
-                    "link": "tasks.johndoe.dev"
-                }
-            ],
-            "certifications": [
-                {
-                    "name": "AWS Certified Developer Associate",
-                    "issuer": "Amazon Web Services",
-                    "date": "09/2022",
-                    "link": "aws.amazon.com/certification"
-                }
-            ]
-        }
     
     def test_connection(self) -> bool:
         """
         Test if Gemini API is accessible and working
         """
         if not self.api_key or self.api_key == "your-gemini-api-key":
-            return False
+            raise Exception("Gemini API key is required for testing connection.")
         
         try:
             response = self._call_gemini_api("Hello, this is a test. Please respond with 'Hello back!'")
             return "hello" in response.lower()
         except Exception as e:
-            print(f"Gemini connection test failed: {e}")
-            return False
+            raise Exception(f"Gemini connection test failed: {e}")

@@ -26,9 +26,7 @@ class LinkedInService:
             return self._scrape_public_profile(linkedin_url)
             
         except Exception as e:
-            print(f"LinkedIn extraction failed: {str(e)}")
-            # Return fallback data for testing
-            return self._get_fallback_format(linkedin_url)
+            raise Exception(f"LinkedIn extraction failed: {str(e)}")
     
     def _is_valid_linkedin_url(self, url: str) -> bool:
         """
@@ -69,8 +67,7 @@ class LinkedInService:
             return self._format_profile_data(profile_data)
             
         except requests.RequestException as e:
-            # If scraping fails, return a template format
-            return self._get_fallback_format(url)
+            raise Exception(f"Failed to access LinkedIn profile: {str(e)}")
     
     def _extract_name(self, soup: BeautifulSoup) -> str:
         """Extract name from LinkedIn profile"""
@@ -240,22 +237,3 @@ Experience:
         
         return formatted_text
     
-    def _get_fallback_format(self, url: str) -> str:
-        """Return fallback format when scraping fails"""
-        return f"""
-LINKEDIN PROFILE DATA (Manual Processing Required):
-
-LinkedIn URL: {url}
-
-Note: Unable to automatically extract profile data. Please manually provide the following information:
-
-1. Name and contact information
-2. Professional headline
-3. Current location
-4. About/Summary section
-5. Work experience with job titles, companies, and descriptions
-6. Education background
-7. Key skills and technologies
-
-This information will be used to generate your tailored resume.
-"""
