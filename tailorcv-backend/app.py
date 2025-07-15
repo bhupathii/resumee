@@ -240,39 +240,39 @@ def generate_resume():
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
         
+        # Allow generation with just job description for testing (use default resume data)
         if not linkedin_profile_url and not uploaded_resume:
-            return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
+            print("No LinkedIn URL or resume provided. Using default resume data for testing.")
+            resume_text = "John Doe - Software Engineer with 3 years of experience in React, Python, and JavaScript. Experienced in building web applications and working with databases."
 
         if template_name not in ['free_resume', 'premium_resume', 'jakes_resume']:
             return jsonify({"error": "Invalid template name"}), 400
 
-        # Process input
+        # Process input (skip if using default resume data)
         if linkedin_profile_url:
             print(f"Fetching LinkedIn profile: {linkedin_profile_url}")
-            profile_data = linkedin_service.get_profile(linkedin_profile_url)
+            profile_data = linkedin_service.extract_profile_data(linkedin_profile_url)
             if not profile_data:
                 return jsonify({"error": "Failed to fetch LinkedIn profile"}), 500
             
             # Use the full profile text for analysis
-            resume_text = json.dumps(profile_data)
+            resume_text = profile_data
 
         elif uploaded_resume:
             if not validate_file(uploaded_resume):
                 return jsonify({"error": "Invalid file type or size"}), 400
 
             print(f"Processing uploaded resume: {uploaded_resume.filename}")
-            resume_text = pdf_service.extract_text(uploaded_resume.stream)
+            resume_text = pdf_service.extract_text_from_pdf(uploaded_resume)
         
         # Use OpenRouter to tailor the resume
         print("Generating tailored content with OpenRouter...")
-        tailored_content_str = openrouter_service.generate_resume_content(resume_text, job_description)
+        tailored_content = openrouter_service.optimize_resume(resume_text, job_description)
         
-        try:
-            tailored_content = json.loads(tailored_content_str)
-        except json.JSONDecodeError:
-            print("Failed to parse JSON from OpenRouter, using raw string.")
-            # Fallback for non-JSON content
-            tailored_content = {"summary": tailored_content_str, "experiences": [], "skills": ""}
+        # The optimize_resume method already returns a dict, no need to parse JSON
+        if not isinstance(tailored_content, dict):
+            print("Warning: OpenRouter returned non-dict content, using fallback structure.")
+            tailored_content = {"summary": str(tailored_content), "experience": [], "skills": []}
 
         # Generate LaTeX PDF
         print(f"Generating PDF with template: {template_name}.tex")
