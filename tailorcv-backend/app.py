@@ -235,7 +235,7 @@ def generate_resume():
         job_description = data.get('job_description')
         linkedin_profile_url = data.get('linkedin_url')
         uploaded_resume = request.files.get('resume')
-        template_name = data.get('template', 'premium_resume')
+        template_name = data.get('template', 'jakes_resume')
 
         if not job_description:
             return jsonify({"error": "Job description is required"}), 400
@@ -243,7 +243,7 @@ def generate_resume():
         if not linkedin_profile_url and not uploaded_resume:
             return jsonify({"error": "Either LinkedIn URL or a resume file is required"}), 400
 
-        if template_name not in ['free_resume', 'premium_resume']:
+        if template_name not in ['free_resume', 'premium_resume', 'jakes_resume']:
             return jsonify({"error": "Invalid template name"}), 400
 
         # Process input
@@ -276,7 +276,7 @@ def generate_resume():
 
         # Generate LaTeX PDF
         print(f"Generating PDF with template: {template_name}.tex")
-        pdf_bytes = latex_service.generate_pdf(template_name, tailored_content)
+        pdf_bytes = latex_service.generate_pdf(template_name, tailored_content, is_premium)
 
         if not pdf_bytes:
             return jsonify({"error": "Failed to generate PDF: LaTeX compilation failed"}), 500

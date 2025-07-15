@@ -4,6 +4,7 @@ from jinja2 import Environment, FileSystemLoader
 from pdflatex import PDFLaTeX
 import traceback
 from .latex_sanitizer import sanitize_for_latex
+from .pdf_fallback_service import PDFFallbackService
 
 class LaTeXService:
     def __init__(self):
@@ -16,7 +17,13 @@ class LaTeXService:
             autoescape=True, # Enable autoescaping
             variable_start_string='((', # Use custom delimiters
             variable_end_string='))',
+            comment_start_string='((#',  # Custom comment delimiters to avoid LaTeX conflicts
+            comment_end_string='#))',
+            block_start_string='((%',    # Custom block delimiters  
+            block_end_string='%)',
         )
+        # Initialize fallback service for when LaTeX fails
+        self.fallback_service = PDFFallbackService()
 
     def _sanitize_data(self, data):
         """
@@ -33,14 +40,15 @@ class LaTeXService:
         # Return non-string, non-dict, non-list values as-is
         return data
 
-    def generate_pdf(self, template_name, data):
+    def generate_pdf(self, template_name, data, is_premium=False):
         """
         Generates a PDF from a given LaTeX template and data.
-        It now sanitizes the data before rendering.
+        Sanitizes the data before rendering and falls back to ReportLab if LaTeX fails.
         """
         if not shutil.which('pdflatex'):
             print("ERROR: pdflatex command not found. LaTeX is not installed or not in PATH.")
-            return None
+            print("Falling back to ReportLab PDF generation...")
+            return self.fallback_service.generate_pdf(data, is_premium)
 
         try:
             # First, sanitize all the data to prevent injection and errors
@@ -66,7 +74,8 @@ class LaTeXService:
                     print("--- LaTeX Compiler Log ---")
                     print(log.decode('utf-8', errors='ignore'))
                     print("--------------------------")
-                return None
+                print("Falling back to ReportLab PDF generation...")
+                return self.fallback_service.generate_pdf(data, is_premium)
             
             return pdf_bytes
             
@@ -75,4 +84,9 @@ class LaTeXService:
             print(f"An unexpected error occurred in LaTeXService.generate_pdf: {e}")
             traceback.print_exc()
             print("="*60)
-            return None
+            print("Falling back to ReportLab PDF generation...")
+            try:
+                return self.fallback_service.generate_pdf(data, is_premium)
+            except Exception as fallback_error:
+                print(f"Fallback PDF generation also failed: {fallback_error}")
+                return None
